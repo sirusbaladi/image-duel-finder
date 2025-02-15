@@ -1,7 +1,5 @@
 
-import { useState } from "react";
 import { ImageRating } from "@/utils/elo";
-import { ArrowLeft, ArrowRight } from "lucide-react";
 
 interface ImageComparisonProps {
   imageA: ImageRating;
@@ -10,73 +8,48 @@ interface ImageComparisonProps {
 }
 
 export const ImageComparison = ({ imageA, imageB, onSelect }: ImageComparisonProps) => {
-  const [hoveredImage, setHoveredImage] = useState<"A" | "B" | null>(null);
-
-  const handleSelect = (winner: ImageRating, loser: ImageRating) => {
-    onSelect(winner, loser);
-    setHoveredImage(null);
-  };
-
   return (
-    <div className="w-full max-w-6xl mx-auto p-4">
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
-        <div
-          className={`relative group cursor-pointer transition-all duration-300 ${
-            hoveredImage === "A" ? "scale-105" : "scale-100"
-          }`}
-          onMouseEnter={() => setHoveredImage("A")}
-          onMouseLeave={() => setHoveredImage(null)}
-          onClick={() => handleSelect(imageA, imageB)}
+    <div className="w-full max-w-4xl mx-auto flex flex-col md:flex-row gap-6 items-center justify-center">
+      <div className="relative group">
+        <button
+          onClick={() => onSelect(imageA, imageB)}
+          className="relative overflow-hidden rounded-2xl transition-transform duration-200 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
-          <div className="relative overflow-hidden rounded-lg shadow-lg">
-            <img
-              src={imageA.url}
-              alt="Option A"
-              className="w-full md:w-[400px] h-[300px] object-cover animate-image-fade-in"
-            />
-            <div
-              className={`absolute inset-0 bg-primary/10 transition-opacity duration-300 ${
-                hoveredImage === "A" ? "opacity-100" : "opacity-0"
-              }`}
-            />
-          </div>
-          <ArrowLeft
-            className={`absolute left-4 top-1/2 transform -translate-y-1/2 text-primary transition-opacity duration-300 ${
-              hoveredImage === "A" ? "opacity-100" : "opacity-0"
-            }`}
-            size={32}
+          <img
+            src={imageA.url}
+            alt="Option A"
+            className="w-full md:w-[400px] h-[400px] object-cover"
           />
-        </div>
+          <div className="absolute inset-x-0 top-0 p-4 flex items-center gap-2">
+            <span className="font-medium text-white">Josh</span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 bg-green-500 rounded-full" />
+              <span className="text-sm text-white/90">Active now</span>
+            </span>
+          </div>
+        </button>
+      </div>
 
-        <div className="text-2xl font-semibold text-muted-foreground">vs</div>
+      <div className="font-medium text-muted-foreground">or</div>
 
-        <div
-          className={`relative group cursor-pointer transition-all duration-300 ${
-            hoveredImage === "B" ? "scale-105" : "scale-100"
-          }`}
-          onMouseEnter={() => setHoveredImage("B")}
-          onMouseLeave={() => setHoveredImage(null)}
-          onClick={() => handleSelect(imageB, imageA)}
+      <div className="relative group">
+        <button
+          onClick={() => onSelect(imageB, imageA)}
+          className="relative overflow-hidden rounded-2xl transition-transform duration-200 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         >
-          <div className="relative overflow-hidden rounded-lg shadow-lg">
-            <img
-              src={imageB.url}
-              alt="Option B"
-              className="w-full md:w-[400px] h-[300px] object-cover animate-image-fade-in"
-            />
-            <div
-              className={`absolute inset-0 bg-primary/10 transition-opacity duration-300 ${
-                hoveredImage === "B" ? "opacity-100" : "opacity-0"
-              }`}
-            />
-          </div>
-          <ArrowRight
-            className={`absolute right-4 top-1/2 transform -translate-y-1/2 text-primary transition-opacity duration-300 ${
-              hoveredImage === "B" ? "opacity-100" : "opacity-0"
-            }`}
-            size={32}
+          <img
+            src={imageB.url}
+            alt="Option B"
+            className="w-full md:w-[400px] h-[400px] object-cover"
           />
-        </div>
+          <div className="absolute inset-x-0 top-0 p-4 flex items-center gap-2">
+            <span className="font-medium text-white">Josh</span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 bg-green-500 rounded-full" />
+              <span className="text-sm text-white/90">Active now</span>
+            </span>
+          </div>
+        </button>
       </div>
     </div>
   );
