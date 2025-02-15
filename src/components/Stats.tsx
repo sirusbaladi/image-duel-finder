@@ -1,6 +1,9 @@
 
 import { ImageRating } from "@/utils/elo";
-import { Trophy } from "lucide-react";
+import {
+  ToggleGroup,
+  ToggleGroupItem,
+} from "@/components/ui/toggle-group";
 
 interface StatsProps {
   ratings: ImageRating[];
@@ -10,44 +13,46 @@ interface StatsProps {
 export const Stats = ({ ratings, totalComparisons }: StatsProps) => {
   const sortedRatings = [...ratings].sort((a, b) => b.rating - a.rating);
   const topImages = sortedRatings.slice(0, 5);
+  const bottomImages = [...sortedRatings].reverse().slice(0, 5);
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-8 animate-slide-in">
-      <div className="text-center space-y-2">
-        <h2 className="text-2xl font-serif">Photo Rankings</h2>
-        <p className="text-muted-foreground">
-          Based on {totalComparisons} comparisons
-        </p>
+      <div className="text-center space-y-8">
+        <h1 className="text-6xl font-serif">See the data.</h1>
+        
+        <ToggleGroup type="single" defaultValue="best" className="justify-center">
+          <ToggleGroupItem value="best" className="px-6 py-2 rounded-full">
+            Best profile
+          </ToggleGroupItem>
+          <ToggleGroupItem value="worst" className="px-6 py-2 rounded-full">
+            Worst profile
+          </ToggleGroupItem>
+          <ToggleGroupItem value="best20" className="px-6 py-2 rounded-full">
+            Best 20
+          </ToggleGroupItem>
+          <ToggleGroupItem value="worst20" className="px-6 py-2 rounded-full">
+            Worst 20
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
       <div className="space-y-4">
         {topImages.map((image, index) => (
           <div
             key={image.id}
-            className="flex items-center gap-4 p-4 bg-secondary/50 rounded-lg"
+            className="overflow-hidden rounded-xl bg-secondary"
           >
-            <div className="relative w-20 h-20">
-              <img
-                src={image.url}
-                alt={`Rank ${index + 1}`}
-                className="w-full h-full object-cover rounded-md"
-              />
-              {index === 0 && (
-                <Trophy
-                  className="absolute -top-2 -right-2 text-primary"
-                  size={24}
-                />
-              )}
-            </div>
-            <div className="flex-1">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Rank {index + 1}</span>
-                <span className="text-sm text-muted-foreground">
-                  Rating: {Math.round(image.rating)}
-                </span>
+            <img
+              src={image.url}
+              alt={`Rank ${index + 1}`}
+              className="w-full aspect-[4/3] object-cover"
+            />
+            <div className="p-4 flex justify-between items-center text-sm">
+              <div className="font-mono">
+                {image.comparisons} W / {totalComparisons - image.comparisons} L
               </div>
-              <div className="text-sm text-muted-foreground">
-                Selected in {image.comparisons} comparisons
+              <div className="font-mono">
+                ELO {Math.round(image.rating)}
               </div>
             </div>
           </div>
