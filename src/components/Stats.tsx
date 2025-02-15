@@ -12,11 +12,11 @@ export const Stats = ({ ratings, totalComparisons }: StatsProps) => {
   const topImages = sortedRatings.slice(0, 5);
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-4 space-y-6 animate-slide-in">
+    <div className="w-full max-w-2xl mx-auto space-y-8 animate-slide-in">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-semibold text-foreground">Rankings</h2>
+        <h2 className="text-2xl font-serif">Photo Rankings</h2>
         <p className="text-muted-foreground">
-          Total comparisons: {totalComparisons}
+          Based on {totalComparisons} comparisons
         </p>
       </div>
 
@@ -24,9 +24,9 @@ export const Stats = ({ ratings, totalComparisons }: StatsProps) => {
         {topImages.map((image, index) => (
           <div
             key={image.id}
-            className="flex items-center gap-4 p-4 bg-secondary rounded-lg shadow-sm"
+            className="flex items-center gap-4 p-4 bg-secondary/50 rounded-lg"
           >
-            <div className="relative w-16 h-16">
+            <div className="relative w-20 h-20">
               <img
                 src={image.url}
                 alt={`Rank ${index + 1}`}
@@ -47,7 +47,7 @@ export const Stats = ({ ratings, totalComparisons }: StatsProps) => {
                 </span>
               </div>
               <div className="text-sm text-muted-foreground">
-                Comparisons: {image.comparisons}
+                Selected in {image.comparisons} comparisons
               </div>
             </div>
           </div>

@@ -8,6 +8,8 @@ import {
   selectPairForComparison,
   updateRatings,
 } from "@/utils/elo";
+import { Button } from "@/components/ui/button";
+import { Eye } from "lucide-react";
 
 // Example images (replace with your actual images)
 const sampleImages = [
@@ -28,6 +30,7 @@ const Index = () => {
     ratings[1],
   ]);
   const [totalComparisons, setTotalComparisons] = useState(0);
+  const [showStats, setShowStats] = useState(false);
 
   useEffect(() => {
     const pair = selectPairForComparison(ratings, totalComparisons);
@@ -49,23 +52,63 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8 space-y-12">
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold text-foreground">Image Duel</h1>
-          <p className="text-lg text-muted-foreground">
-            Click on the image you prefer
-          </p>
-        </div>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <header className="py-4 px-6 flex justify-between items-center border-b">
+        <span className="font-semibold text-lg">FixOurPics.com</span>
+        <Button
+          variant="ghost"
+          className="text-muted-foreground hover:text-foreground"
+          onClick={() => setShowStats((prev) => !prev)}
+        >
+          {showStats ? "Back to voting" : "Leaderboard"}
+        </Button>
+      </header>
 
-        <ImageComparison
-          imageA={currentPair[0]}
-          imageB={currentPair[1]}
-          onSelect={handleSelection}
-        />
+      <main className="flex-1 container max-w-5xl mx-auto py-12 px-4">
+        {!showStats ? (
+          <div className="space-y-12">
+            <div className="text-center space-y-4">
+              <h1 className="text-4xl font-serif max-w-2xl mx-auto leading-tight">
+                Josh and Jonathan are (unfortunately) on the dating apps.
+              </h1>
+              <p className="text-lg text-muted-foreground">
+                Their biggest struggle is choosing the perfect photo.
+              </p>
+              <p className="text-lg">Can you help them?</p>
+            </div>
 
-        <Stats ratings={ratings} totalComparisons={totalComparisons} />
-      </div>
+            <div className="flex justify-center gap-4">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => console.log("Help Josh")}
+              >
+                Help Josh
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => console.log("Help Jonathan")}
+              >
+                Help Jonathan
+              </Button>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mx-auto flex items-center gap-2"
+              onClick={() => setShowStats(true)}
+            >
+              <Eye size={16} />
+              see the data
+            </Button>
+          </div>
+        ) : (
+          <Stats ratings={ratings} totalComparisons={totalComparisons} />
+        )}
+      </main>
     </div>
   );
 };
