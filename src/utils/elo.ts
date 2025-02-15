@@ -4,6 +4,8 @@ export interface ImageRating {
   url: string;
   rating: number;
   comparisons: number;
+  wins: number;  // Add wins counter
+  losses: number;  // Add losses counter
 }
 
 const K_FACTOR = 32;
@@ -28,11 +30,13 @@ export const updateRatings = (
       ...winner,
       rating: newWinnerRating,
       comparisons: winner.comparisons + 1,
+      wins: winner.wins + 1,  // Increment wins
     },
     {
       ...loser,
       rating: newLoserRating,
       comparisons: loser.comparisons + 1,
+      losses: loser.losses + 1,  // Increment losses
     },
   ];
 };
@@ -43,6 +47,8 @@ export const getInitialRatings = (images: string[]): ImageRating[] => {
     url,
     rating: INITIAL_RATING,
     comparisons: 0,
+    wins: 0,
+    losses: 0,
   }));
 };
 
