@@ -55,12 +55,12 @@ const Index = () => {
             <div className="text-center space-y-4">
               <h1 className="text-5xl font-['PP_Editorial_New'] font-normal max-w-2xl mx-auto leading-tight">
                 <div className="flex items-center gap-5">
-                  <img src={sirusImage} alt="Sirus" className="w-[1em] h-[1em] rounded-md -translate-y-1.5 object-cover" />
+                  <img src={sirusImage} alt="Sirus" className="w-[1em] h-[1em] rounded-md -translate-y-1.0 object-cover" />
                   <span>Sirus is (unfortunately)</span>
                 </div>
                 on the dating apps.
               </h1>
-              <p className="text-lg font-['PP_Neue_Montreal'] font-thin">Their biggest struggle is choosing the perfect photo.</p>
+              <p className="text-lg font-['PP_Neue_Montreal'] font-thin">His biggest struggle is choosing the perfect photo.</p>
               <p className="text-lg font-['PP_Neue_Montreal'] font-thin">Can you help him?</p>
             </div>
 
