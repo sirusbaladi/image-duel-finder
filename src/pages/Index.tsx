@@ -6,6 +6,7 @@ import { ImageRating, getInitialRatings, selectPairForComparison, updateRatings 
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
 import { UserRegistration } from "@/components/UserRegistration";
+import sirusImage from "@/assets/images/sirus.jpeg";
 
 // Example images (replace with your actual images)
 const sampleImages = ["https://picsum.photos/800/600?random=1", "https://picsum.photos/800/600?random=2", "https://picsum.photos/800/600?random=3", "https://picsum.photos/800/600?random=4", "https://picsum.photos/800/600?random=5"
@@ -49,14 +50,18 @@ const Index = () => {
         </Button>
       </header>
 
-      <main className="flex-1 container max-w-5xl mx-auto py-12 px-4">
+      <main className="flex-1 container max-w-5xl mx-auto py-12 px-4 flex items-center justify-center">
         {!showStats && !showVoting ? <div className="space-y-12">
             <div className="text-center space-y-4">
-              <h1 className="text-4xl font-serif max-w-2xl mx-auto leading-tight">Sirus is (unfortunately) on the dating apps.</h1>
-              <p className="text-lg text-muted-foreground">
-                Their biggest struggle is choosing the perfect photo.
-              </p>
-              <p className="text-lg">Can you help him?</p>
+              <h1 className="text-5xl font-['PP_Editorial_New'] font-normal max-w-2xl mx-auto leading-tight">
+                <div className="flex items-center gap-5">
+                  <img src={sirusImage} alt="Sirus" className="w-[1em] h-[1em] rounded-md -translate-y-1.5 object-cover" />
+                  <span>Sirus is (unfortunately)</span>
+                </div>
+                on the dating apps.
+              </h1>
+              <p className="text-lg font-['PP_Neue_Montreal'] font-thin">Their biggest struggle is choosing the perfect photo.</p>
+              <p className="text-lg font-['PP_Neue_Montreal'] font-thin">Can you help him?</p>
             </div>
 
             <div className="flex justify-center gap-4">
