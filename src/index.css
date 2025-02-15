@@ -16,7 +16,7 @@
   font-family: 'PP Neue Montreal';
   src: url('/PPNeueMontreal-Thin.ttf') format('truetype');
   font-weight: 100;
-  font-style: normal;
+  font-style: thin;
 }
 
 @font-face {

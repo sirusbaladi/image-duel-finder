@@ -43,8 +43,8 @@ const Index = () => {
 
   return <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="py-4 px-6 flex justify-between items-center border-b">
-        <span className="font-semibold text-lg">FixOurPics.com</span>
+      <header className="py-4 px-6 flex justify-between items-center">
+        <span className="font-semibold text-lg"></span>
         <Button variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => setShowStats(prev => !prev)}>
           {showStats ? "Back to voting" : "Leaderboard"}
         </Button>
@@ -53,15 +53,17 @@ const Index = () => {
       <main className="flex-1 container max-w-5xl mx-auto py-12 px-4 flex items-center justify-center">
         {!showStats && !showVoting ? <div className="space-y-12">
             <div className="text-center space-y-4">
-              <h1 className="text-5xl font-['PP_Editorial_New'] font-normal max-w-2xl mx-auto leading-tight">
-                <div className="flex items-center gap-5">
+              <h1 className="text-5xl font-['PP_Editorial_New'] font-normal max-w-2xl mx-auto leading-tight text-center">
+                <div className="flex items-center justify-center gap-5 mb-2">
                   <img src={sirusImage} alt="Sirus" className="w-[1em] h-[1em] rounded-md -translate-y-1.0 object-cover" />
-                  <span>Sirus is (unfortunately)</span>
+                  <span>Sirus is</span>
                 </div>
-                on the dating apps.
+                <div className="text-center">
+                  (unfortunately)<br />on the dating apps.
+                </div>
               </h1>
-              <p className="text-lg font-['PP_Neue_Montreal'] font-thin">His biggest struggle is choosing the perfect photo.</p>
-              <p className="text-lg font-['PP_Neue_Montreal'] font-thin">Can you help him?</p>
+              <p className="text-lg font-['PP Neue Montreal'] font-thin">His biggest struggle is choosing the perfect photo.</p>
+              <p className="text-lg font-['PP Neue Montreal'] font-thin">Can you help him?</p>
             </div>
 
             <div className="flex justify-center gap-4">
