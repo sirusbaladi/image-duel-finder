@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -18,6 +17,7 @@ export const UserRegistration = ({ onSubmit, userId, deviceType }: UserRegistrat
   const [name, setName] = useState("");
   const [gender, setGender] = useState("");
   const [open, setOpen] = useState(false);
+  const [storedUserData, setStoredUserData] = useState<{ name: string } | null>(null);
 
   // Check for existing user data
   useEffect(() => {
@@ -31,14 +31,23 @@ export const UserRegistration = ({ onSubmit, userId, deviceType }: UserRegistrat
         .maybeSingle();
 
       if (data && !error) {
-        // If we find existing user data, auto-submit with stored name
+        setStoredUserData(data);
         setName(data.name);
-        onSubmit({ name: data.name, gender: '' }); // Gender will be asked again if not provided
       }
     };
 
     checkExistingUser();
-  }, [userId, onSubmit]);
+  }, [userId]);
+
+  const handleButtonClick = async () => {
+    if (storedUserData?.name) {
+      // If we have stored data, skip the dialog and submit directly
+      onSubmit({ name: storedUserData.name, gender: '' });
+    } else {
+      // Otherwise, open the dialog
+      setOpen(true);
+    }
+  };
 
   const handleSubmit = async () => {
     if (gender) {
@@ -76,6 +85,7 @@ export const UserRegistration = ({ onSubmit, userId, deviceType }: UserRegistrat
           variant="outline" 
           size="lg" 
           className="flex px-[16px] sm:px-[30px] py-[10px] sm:py-[16px] w-[120px] sm:w-[186px] border border-[#00000033] rounded-[10px] bg-gradient-to-t from-[#F5F5F5] to-[#FEFEFE] shadow-sm text-[#00000099] text-[12px] sm:text-[16px] relative z-10 font-['PP Neue Montreal'] font-thin"
+          onClick={handleButtonClick}
         >
           Yes, let's do it :)
         </Button>
