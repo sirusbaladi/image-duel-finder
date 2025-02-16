@@ -2,38 +2,98 @@
 import { useState, useEffect } from "react";
 import { ImageComparison } from "@/components/ImageComparison";
 import { Stats } from "@/components/Stats";
-import { ImageRating, getInitialRatings, selectPairForComparison, updateRatings } from "@/utils/elo";
+import { ImageRating, updateRatings } from "@/utils/elo";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
 import { UserRegistration } from "@/components/UserRegistration";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import sirusImage from "@/assets/images/sirus.jpeg";
-
-// Example images (replace with your actual images)
-const sampleImages = ["https://picsum.photos/800/600?random=1", "https://picsum.photos/800/600?random=2", "https://picsum.photos/800/600?random=3", "https://picsum.photos/800/600?random=4", "https://picsum.photos/800/600?random=5"
-// Add more images here
-];
+import { toast } from "sonner";
 
 const Index = () => {
-  const [ratings, setRatings] = useState<ImageRating[]>(() => getInitialRatings(sampleImages));
-  const [currentPair, setCurrentPair] = useState<[ImageRating, ImageRating]>([ratings[0], ratings[1]]);
-  const [totalComparisons, setTotalComparisons] = useState(0);
   const [showStats, setShowStats] = useState(false);
   const [showVoting, setShowVoting] = useState(false);
   const [userData, setUserData] = useState<{ name: string; gender: string } | null>(null);
+  const queryClient = useQueryClient();
+
+  // Fetch all images and their ratings
+  const { data: ratings = [], isLoading } = useQuery({
+    queryKey: ['images'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('images')
+        .select('*')
+        .order('rating', { ascending: false });
+
+      if (error) {
+        toast.error('Failed to load images');
+        throw error;
+      }
+
+      return data.map(img => ({
+        ...img,
+        id: img.id.toString()
+      })) as ImageRating[];
+    }
+  });
+
+  const selectPairForComparison = (images: ImageRating[]): [ImageRating, ImageRating] => {
+    const indices = new Set<number>();
+    while (indices.size < 2) {
+      indices.add(Math.floor(Math.random() * images.length));
+    }
+    const [i1, i2] = Array.from(indices);
+    return [images[i1], images[i2]];
+  };
+
+  const [currentPair, setCurrentPair] = useState<[ImageRating, ImageRating] | null>(null);
 
   useEffect(() => {
-    const pair = selectPairForComparison(ratings, totalComparisons);
-    setCurrentPair(pair);
-  }, [totalComparisons]);
+    if (ratings.length >= 2) {
+      setCurrentPair(selectPairForComparison(ratings));
+    }
+  }, [ratings]);
 
-  const handleSelection = (winner: ImageRating, loser: ImageRating) => {
+  const handleSelection = async (winner: ImageRating, loser: ImageRating) => {
     const [updatedWinner, updatedLoser] = updateRatings(winner, loser);
-    setRatings(prevRatings => prevRatings.map(rating => {
-      if (rating.id === winner.id) return updatedWinner;
-      if (rating.id === loser.id) return updatedLoser;
-      return rating;
-    }));
-    setTotalComparisons(prev => prev + 1);
+
+    try {
+      // Update winner
+      const { error: winnerError } = await supabase
+        .from('images')
+        .update({
+          rating: updatedWinner.rating,
+          comparisons: updatedWinner.comparisons,
+          wins: updatedWinner.wins
+        })
+        .eq('id', winner.id);
+
+      if (winnerError) throw winnerError;
+
+      // Update loser
+      const { error: loserError } = await supabase
+        .from('images')
+        .update({
+          rating: updatedLoser.rating,
+          comparisons: updatedLoser.comparisons,
+          losses: updatedLoser.losses
+        })
+        .eq('id', loser.id);
+
+      if (loserError) throw loserError;
+
+      // Invalidate queries to refresh data
+      await queryClient.invalidateQueries({ queryKey: ['images'] });
+
+      // Select new pair
+      if (ratings.length >= 2) {
+        setCurrentPair(selectPairForComparison(ratings));
+      }
+    } catch (error) {
+      toast.error('Failed to update ratings');
+      console.error('Error updating ratings:', error);
+    }
   };
 
   const handleUserSubmit = (data: { name: string; gender: string }) => {
@@ -41,17 +101,30 @@ const Index = () => {
     setShowVoting(true);
   };
 
-  return <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="py-4 px-6 flex justify-between items-center">
         <span className="font-semibold text-lg"></span>
-        <Button variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => setShowStats(prev => !prev)}>
+        <Button 
+          variant="ghost" 
+          className="text-muted-foreground hover:text-foreground" 
+          onClick={() => setShowStats(prev => !prev)}
+        >
           {showStats ? "Back to voting" : "Leaderboard"}
         </Button>
       </header>
 
       <main className="flex-1 container max-w-5xl mx-auto py-12 px-4 flex items-center justify-center">
-        {!showStats && !showVoting ? <div className="space-y-12">
+        {!showStats && !showVoting ? (
+          <div className="space-y-12">
             <div className="text-center space-y-4">
               <h1 className="text-5xl font-['PP_Editorial_New'] font-normal max-w-2xl mx-auto leading-tight text-center">
                 <div className="flex items-center justify-center gap-5 mb-2">
@@ -70,24 +143,36 @@ const Index = () => {
               <UserRegistration onSubmit={handleUserSubmit} />
             </div>
 
-            <Button variant="ghost" size="sm" className="mx-auto flex items-center gap-2" onClick={() => setShowStats(true)}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="mx-auto flex items-center gap-2" 
+              onClick={() => setShowStats(true)}
+            >
               <Eye size={16} />
               see the data
             </Button>
-          </div> : showVoting ? <div className="space-y-8">
+          </div>
+        ) : showVoting && currentPair ? (
+          <div className="space-y-8">
             <div className="text-center space-y-4">
               <h1 className="text-2xl font-medium">Click to choose the better photo. Rank up on our leaderboard.</h1>
             </div>
-            <ImageComparison imageA={currentPair[0]} imageB={currentPair[1]} onSelect={handleSelection} />
-            <div className="text-center space-y-2">
-              <p className="text-sm text-muted-foreground">{totalComparisons} swipes • {Math.round(totalComparisons / 0.5)}% seen</p>
-              <Button variant="secondary" size="sm" onClick={() => setShowStats(true)}>
-                {50 - totalComparisons} more swipes to see the data
-              </Button>
-            </div>
-          </div> : <Stats ratings={ratings} totalComparisons={totalComparisons} />}
+            <ImageComparison 
+              imageA={currentPair[0]} 
+              imageB={currentPair[1]} 
+              onSelect={handleSelection} 
+            />
+          </div>
+        ) : (
+          <Stats 
+            ratings={ratings} 
+            totalComparisons={ratings.reduce((sum, img) => sum + img.comparisons, 0)} 
+          />
+        )}
       </main>
-    </div>;
+    </div>
+  );
 };
 
 export default Index;
