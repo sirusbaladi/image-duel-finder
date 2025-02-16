@@ -20,7 +20,7 @@ export const updateRatings = (
   loser: ImageRating
 ): [ImageRating, ImageRating] => {
   const expectedWinner = calculateExpectedScore(winner.rating, loser.rating);
-  const expectedLoser = calculateExpectedScore(loser.rating, winner.rating);
+  const expectedLoser = 1 - expectedWinner;
 
   const newWinnerRating = Math.round(winner.rating + K_FACTOR * (1 - expectedWinner));
   const newLoserRating = Math.round(loser.rating + K_FACTOR * (0 - expectedLoser));

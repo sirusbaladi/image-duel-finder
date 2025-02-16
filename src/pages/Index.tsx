@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { ImageComparison } from "@/components/ImageComparison";
 import { Stats } from "@/components/Stats";
 import { ImageRating, updateRatings } from "@/utils/elo";
+import { selectNextPairForComparison } from "@/utils/pairSelection";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
 import { UserRegistration } from "@/components/UserRegistration";
@@ -10,6 +11,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import sirusImage from "@/assets/images/sirus.jpeg";
 import { toast } from "sonner";
+
+// Some constants for your adaptive logic
+const RANDOM_PHASE_LIMIT = 5;       // # of initial votes for purely random
+const RATING_DIFF_THRESHOLD = 50;    // consider images with <50 Elo diff
+const PARTIAL_RANDOM_CHANCE = 0.15;  // 15% chance to pick random in adaptive
 
 const Index = () => {
   const [showStats, setShowStats] = useState(false);
@@ -38,20 +44,17 @@ const Index = () => {
     }
   });
 
-  const selectPairForComparison = (images: ImageRating[]): [ImageRating, ImageRating] => {
-    const indices = new Set<number>();
-    while (indices.size < 2) {
-      indices.add(Math.floor(Math.random() * images.length));
-    }
-    const [i1, i2] = Array.from(indices);
-    return [images[i1], images[i2]];
-  };
-
   const [currentPair, setCurrentPair] = useState<[ImageRating, ImageRating] | null>(null);
 
   useEffect(() => {
     if (ratings.length >= 2) {
-      setCurrentPair(selectPairForComparison(ratings));
+    const pair = selectNextPairForComparison(
+      ratings,
+      RANDOM_PHASE_LIMIT,
+      RATING_DIFF_THRESHOLD,
+      PARTIAL_RANDOM_CHANCE
+    );
+    setCurrentPair(pair);
     }
   }, [ratings]);
 
@@ -88,7 +91,13 @@ const Index = () => {
 
       // Select new pair
       if (ratings.length >= 2) {
-        setCurrentPair(selectPairForComparison(ratings));
+        const nextPair = selectNextPairForComparison(
+          ratings,
+          RANDOM_PHASE_LIMIT,
+          RATING_DIFF_THRESHOLD,
+          PARTIAL_RANDOM_CHANCE
+        );
+        setCurrentPair(nextPair);      
       }
     } catch (error) {
       toast.error('Failed to update ratings');
@@ -112,10 +121,20 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="py-4 px-6 flex justify-between items-center">
-        <span className="font-semibold text-lg"></span>
+        <a 
+          href="/" 
+          className="font-['PP Neue Montreal'] font-thin text-[#0A0A0A] hover:scale-[1.02] active:scale-[0.99] transition-all duration-250" 
+          onClick={(e) => {
+            e.preventDefault();
+            setShowStats(false);
+            setShowVoting(false);
+          }}
+        >
+          Sirus.nyc
+        </a>
         <Button 
           variant="ghost" 
-          className="text-muted-foreground hover:text-foreground" 
+          className="font-['PP Neue Montreal'] font-thin text-[#0A0A0A] hover:scale-[1.02] active:scale-[0.99] transition-all duration-250" 
           onClick={() => setShowStats(prev => !prev)}
         >
           {showStats ? "Back to voting" : "Leaderboard"}
@@ -156,7 +175,7 @@ const Index = () => {
         ) : showVoting && currentPair ? (
           <div className="space-y-8">
             <div className="text-center space-y-4">
-              <h1 className="text-2xl font-medium">Click to choose the better photo. Rank up on our leaderboard.</h1>
+              <h1 className="text-2xl font-['PP Neue Montreal'] font-thin">Click to choose the better photo!</h1>
             </div>
             <ImageComparison 
               imageA={currentPair[0]} 
