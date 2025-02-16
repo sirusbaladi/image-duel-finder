@@ -87,7 +87,7 @@ export const Stats = ({ ratings, totalComparisons }: StatsProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 px-4">
+      <div className="grid grid-cols-1 gap-4 px-4 sm:max-w-xl lg:max-w-3xl mx-auto">
         {displayImages.map((image, index) => {
           const ratingKey = getRatingKey(category);
           const comparisonsKey = `comparisons_${category}` as keyof ImageRating;
@@ -101,7 +101,7 @@ export const Stats = ({ ratings, totalComparisons }: StatsProps) => {
             >
               <div className="flex flex-col overflow-hidden rounded-[20px]">
                 <div className="relative">
-                  <div className="relative w-full aspect-square overflow-hidden bg-gray-100 border border-gray-300 transition-transform duration-200">
+                  <div className="relative w-[288px] h-[288px] overflow-hidden bg-gray-100 border border-gray-300 transition-transform duration-200">
                     <img
                       src={image.url}
                       alt={`Rank ${index + 1}`}
