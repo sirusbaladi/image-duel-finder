@@ -28,7 +28,7 @@ export const UserRegistration = ({ onSubmit, userId, deviceType }: UserRegistrat
         .from('user_votes')
         .select('name, vote_count')
         .eq('device_id', userId)
-        .single();
+        .maybeSingle();
 
       if (data && !error) {
         // If we find existing user data, auto-submit with stored name

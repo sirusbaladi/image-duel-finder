@@ -107,9 +107,17 @@ const Index = () => {
       if (loserError) throw loserError;
 
       if (userData.name) {
+        const { data: currentData } = await supabase
+          .from('user_votes')
+          .select('vote_count')
+          .eq('device_id', userId)
+          .maybeSingle();
+
+        const currentVoteCount = currentData?.vote_count || 0;
+
         const { error: voteError } = await supabase
           .from('user_votes')
-          .update({ vote_count: supabase.sql`vote_count + 1` })
+          .update({ vote_count: currentVoteCount + 1 })
           .eq('device_id', userId);
 
         if (voteError) {
