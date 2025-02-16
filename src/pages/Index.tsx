@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { ImageComparison } from "@/components/ImageComparison";
 import { Stats } from "@/components/Stats";
@@ -13,7 +12,6 @@ import sirusImage from "@/assets/images/sirus.jpeg";
 import { toast } from "sonner";
 import { useSwipeCount } from "@/hooks/use-swipe-count";
 
-// Some constants for your adaptive logic
 const RANDOM_PHASE_LIMIT = 5;       // # of initial votes for purely random
 const RATING_DIFF_THRESHOLD = 50;    // consider images with <50 Elo diff
 const PARTIAL_RANDOM_CHANCE = 0.15;  // 15% chance to pick random in adaptive
@@ -23,8 +21,8 @@ const Index = () => {
   const [showVoting, setShowVoting] = useState(false);
   const [userData, setUserData] = useState<{ name: string; gender: string } | null>(null);
   const queryClient = useQueryClient();
+  const { isUnlocked, remainingSwipes, incrementSwipeCount, userId, deviceType } = useSwipeCount();
 
-  // Fetch all images and their ratings
   const { data: ratings = [], isLoading } = useQuery({
     queryKey: ['images'],
     queryFn: async () => {
@@ -49,17 +47,15 @@ const Index = () => {
 
   useEffect(() => {
     if (ratings.length >= 2) {
-    const pair = selectNextPairForComparison(
-      ratings,
-      RANDOM_PHASE_LIMIT,
-      RATING_DIFF_THRESHOLD,
-      PARTIAL_RANDOM_CHANCE
-    );
-    setCurrentPair(pair);
+      const pair = selectNextPairForComparison(
+        ratings,
+        RANDOM_PHASE_LIMIT,
+        RATING_DIFF_THRESHOLD,
+        PARTIAL_RANDOM_CHANCE
+      );
+      setCurrentPair(pair);
     }
   }, [ratings]);
-
-  const { isUnlocked, remainingSwipes, incrementSwipeCount } = useSwipeCount();
 
   const handleSelection = async (winner: ImageRating, loser: ImageRating) => {
     if (!userData?.gender) {
@@ -70,7 +66,6 @@ const Index = () => {
     const [updatedWinner, updatedLoser] = updateRatings(winner, loser, userData.gender as 'Woman' | 'Man' | 'Other');
 
     try {
-      // Update winner
       const { error: winnerError } = await supabase
         .from('images')
         .update({
@@ -91,7 +86,6 @@ const Index = () => {
 
       if (winnerError) throw winnerError;
 
-      // Update loser
       const { error: loserError } = await supabase
         .from('images')
         .update({
@@ -112,13 +106,20 @@ const Index = () => {
 
       if (loserError) throw loserError;
 
-      // Invalidate queries to refresh data
-      await queryClient.invalidateQueries({ queryKey: ['images'] });
-      
-      // Increment swipe count
-      incrementSwipeCount();
+      if (userData.name) {
+        const { error: voteError } = await supabase
+          .from('user_votes')
+          .update({ vote_count: supabase.sql`vote_count + 1` })
+          .eq('device_id', userId);
 
-      // Select new pair
+        if (voteError) {
+          console.error('Error updating vote count:', voteError);
+        }
+      }
+
+      incrementSwipeCount();
+      await queryClient.invalidateQueries({ queryKey: ['images'] });
+
       if (ratings.length >= 2) {
         const nextPair = selectNextPairForComparison(
           ratings,
@@ -181,7 +182,11 @@ const Index = () => {
             </div>
 
             <div className="flex justify-center gap-4">
-              <UserRegistration onSubmit={handleUserSubmit} />
+              <UserRegistration 
+                onSubmit={handleUserSubmit} 
+                userId={userId}
+                deviceType={deviceType}
+              />
             </div>
 
             <Button 
@@ -212,12 +217,12 @@ const Index = () => {
             <ImageComparison 
               imageA={currentPair[0]} 
               imageB={currentPair[1]} 
-              onSelect={handleSelection} 
+              onSelect={handleSelection}
               isUnlocked={isUnlocked}
               remainingSwipes={remainingSwipes}
               onStatsClick={() => {
-                setShowVoting(false)
-                setShowStats(true)
+                setShowVoting(false);
+                setShowStats(true);
               }}
             />
           </div>

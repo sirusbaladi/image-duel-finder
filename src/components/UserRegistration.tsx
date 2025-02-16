@@ -1,23 +1,69 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UserRegistrationProps {
   onSubmit: (data: { name: string; gender: string }) => void;
+  userId: string;
+  deviceType: string;
 }
 
-export const UserRegistration = ({ onSubmit }: UserRegistrationProps) => {
+export const UserRegistration = ({ onSubmit, userId, deviceType }: UserRegistrationProps) => {
   const [name, setName] = useState("");
   const [gender, setGender] = useState("");
   const [open, setOpen] = useState(false);
 
-  const handleSubmit = () => {
+  // Check for existing user data
+  useEffect(() => {
+    const checkExistingUser = async () => {
+      if (!userId) return;
+
+      const { data, error } = await supabase
+        .from('user_votes')
+        .select('name, vote_count')
+        .eq('device_id', userId)
+        .single();
+
+      if (data && !error) {
+        // If we find existing user data, auto-submit with stored name
+        setName(data.name);
+        onSubmit({ name: data.name, gender: '' }); // Gender will be asked again if not provided
+      }
+    };
+
+    checkExistingUser();
+  }, [userId, onSubmit]);
+
+  const handleSubmit = async () => {
     if (gender) {
+      if (name) {
+        try {
+          // Try to insert or update user vote record
+          const { error } = await supabase
+            .from('user_votes')
+            .upsert({
+              device_id: userId,
+              name,
+              device_type: deviceType,
+              vote_count: 0
+            }, {
+              onConflict: 'device_id'
+            });
+
+          if (error) {
+            console.error('Error saving user data:', error);
+          }
+        } catch (error) {
+          console.error('Error in handleSubmit:', error);
+        }
+      }
+
       onSubmit({ name, gender });
       setOpen(false);
     }

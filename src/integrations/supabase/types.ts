@@ -63,6 +63,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_votes: {
+        Row: {
+          created_at: string
+          device_id: string
+          device_type: string
+          id: string
+          name: string
+          vote_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          device_type: string
+          id?: string
+          name: string
+          vote_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          device_type?: string
+          id?: string
+          name?: string
+          vote_count?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
