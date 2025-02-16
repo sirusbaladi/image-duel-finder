@@ -55,14 +55,14 @@ export const Stats = ({ ratings, totalComparisons }: StatsProps) => {
             onValueChange={(value) => value && setCategory(value as RatingCategory)} 
             className="justify-center"
           >
-            <ToggleGroupItem value="overall" className="px-6 py-2 rounded-full">
+            <ToggleGroupItem value="overall" className="w-24 h-6 px-2 py-0.5 text-sm rounded-md bg-[#F0F0F0] border border-black/10 hover:bg-[#E8E8E8] transition-colors data-[state=on]:bg-[#E0E0E0] data-[state=on]:border-black/20 data-[state=on]:shadow-sm">
               Overall
             </ToggleGroupItem>
-            <ToggleGroupItem value="male" className="px-6 py-2 rounded-full">
-              Male votes
+            <ToggleGroupItem value="male" className="w-24 h-6 px-2 py-0.5 text-sm rounded-md bg-[#F0F0F0] border border-black/10 hover:bg-[#E8E8E8] transition-colors data-[state=on]:bg-[#E0E0E0] data-[state=on]:border-black/20 data-[state=on]:shadow-sm">
+              Male
             </ToggleGroupItem>
-            <ToggleGroupItem value="female" className="px-6 py-2 rounded-full">
-              Female votes
+            <ToggleGroupItem value="female" className="w-24 h-6 px-2 py-0.5 text-sm rounded-md bg-[#F0F0F0] border border-black/10 hover:bg-[#E8E8E8] transition-colors data-[state=on]:bg-[#E0E0E0] data-[state=on]:border-black/20 data-[state=on]:shadow-sm">
+              Female
             </ToggleGroupItem>
           </ToggleGroup>
 
@@ -72,16 +72,16 @@ export const Stats = ({ ratings, totalComparisons }: StatsProps) => {
             onValueChange={(value) => value && setView(value as ViewMode)} 
             className="justify-center"
           >
-            <ToggleGroupItem value="best" className="px-6 py-2 rounded-full">
-              Best profile
+            <ToggleGroupItem value="best" className="w-28 px-4 py-1 text-sm rounded-full bg-[#F0F0F0] border border-black/10 hover:bg-[#E8E8E8] transition-colors data-[state=on]:bg-[#E0E0E0] data-[state=on]:border-black/20 data-[state=on]:shadow-sm">
+              Best
             </ToggleGroupItem>
-            <ToggleGroupItem value="worst" className="px-6 py-2 rounded-full">
-              Worst profile
+            <ToggleGroupItem value="worst" className="w-28 px-4 py-1 text-sm rounded-full bg-[#F0F0F0] border border-black/10 hover:bg-[#E8E8E8] transition-colors data-[state=on]:bg-[#E0E0E0] data-[state=on]:border-black/20 data-[state=on]:shadow-sm">
+              Worst
             </ToggleGroupItem>
-            <ToggleGroupItem value="best20" className="px-6 py-2 rounded-full">
+            <ToggleGroupItem value="best20" className="w-28 px-4 py-1 text-sm rounded-full bg-[#F0F0F0] border border-black/10 hover:bg-[#E8E8E8] transition-colors data-[state=on]:bg-[#E0E0E0] data-[state=on]:border-black/20 data-[state=on]:shadow-sm">
               Best 20
             </ToggleGroupItem>
-            <ToggleGroupItem value="worst20" className="px-6 py-2 rounded-full">
+            <ToggleGroupItem value="worst20" className="w-28 px-4 py-1 text-sm rounded-full bg-[#F0F0F0] border border-black/10 hover:bg-[#E8E8E8] transition-colors data-[state=on]:bg-[#E0E0E0] data-[state=on]:border-black/20 data-[state=on]:shadow-sm">
               Worst 20
             </ToggleGroupItem>
           </ToggleGroup>

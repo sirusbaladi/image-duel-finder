@@ -5,12 +5,13 @@ import { Stats } from "@/components/Stats";
 import { ImageRating, updateRatings } from "@/utils/elo";
 import { selectNextPairForComparison } from "@/utils/pairSelection";
 import { Button } from "@/components/ui/button";
-import { Eye } from "lucide-react";
+import { Eye, Lock } from "lucide-react";
 import { UserRegistration } from "@/components/UserRegistration";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import sirusImage from "@/assets/images/sirus.jpeg";
 import { toast } from "sonner";
+import { useSwipeCount } from "@/hooks/use-swipe-count";
 
 // Some constants for your adaptive logic
 const RANDOM_PHASE_LIMIT = 5;       // # of initial votes for purely random
@@ -57,6 +58,8 @@ const Index = () => {
     setCurrentPair(pair);
     }
   }, [ratings]);
+
+  const { isUnlocked, remainingSwipes, incrementSwipeCount } = useSwipeCount();
 
   const handleSelection = async (winner: ImageRating, loser: ImageRating) => {
     if (!userData?.gender) {
@@ -111,6 +114,9 @@ const Index = () => {
 
       // Invalidate queries to refresh data
       await queryClient.invalidateQueries({ queryKey: ['images'] });
+      
+      // Increment swipe count
+      incrementSwipeCount();
 
       // Select new pair
       if (ratings.length >= 2) {
@@ -143,7 +149,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="py-4 px-6 flex justify-between items-center">
+      <header className="py-4 px-6">
         <a 
           href="/" 
           className="font-['PP Neue Montreal'] font-thin text-[#0A0A0A] hover:scale-[1.02] active:scale-[0.99] transition-all duration-250" 
@@ -155,13 +161,6 @@ const Index = () => {
         >
           Sirus.nyc
         </a>
-        <Button 
-          variant="ghost" 
-          className="font-['PP Neue Montreal'] font-thin text-[#0A0A0A] hover:scale-[1.02] active:scale-[0.99] transition-all duration-250" 
-          onClick={() => setShowStats(prev => !prev)}
-        >
-          {showStats ? "Back to voting" : "Leaderboard"}
-        </Button>
       </header>
 
       <main className="flex-1 container max-w-5xl mx-auto py-12 px-4 flex items-center justify-center">
@@ -177,7 +176,7 @@ const Index = () => {
                   (unfortunately)<br />on the dating apps.
                 </div>
               </h1>
-              <p className="text-lg font-['PP Neue Montreal'] font-thin">His biggest struggle is choosing the perfect photo.</p>
+              <p className="text-lg font-['PP Neue Montreal'] font-thin">Help him find his wife by choosing the perfect photos.</p>
               <p className="text-lg font-['PP Neue Montreal'] font-thin">Can you help him?</p>
             </div>
 
@@ -188,11 +187,21 @@ const Index = () => {
             <Button 
               variant="ghost" 
               size="sm" 
-              className="mx-auto flex items-center gap-2" 
-              onClick={() => setShowStats(true)}
+              className="mx-auto flex items-center gap-2 relative px-[30px] py-2 rounded-full bg-[#F0F0F0] border border-black/10 hover:bg-[#E8E8E8] transition-colors"
+              onClick={() => isUnlocked && setShowStats(true)}
+              disabled={!isUnlocked}
             >
-              <Eye size={16} />
-              see the data
+              {isUnlocked ? (
+                <>
+                  <Eye size={16} />
+                  see the data
+                </>
+              ) : (
+                <>
+                  <Lock size={16} />
+                  {remainingSwipes} more swipes to see the data
+                </>
+              )}
             </Button>
           </div>
         ) : showVoting && currentPair ? (
@@ -204,6 +213,12 @@ const Index = () => {
               imageA={currentPair[0]} 
               imageB={currentPair[1]} 
               onSelect={handleSelection} 
+              isUnlocked={isUnlocked}
+              remainingSwipes={remainingSwipes}
+              onStatsClick={() => {
+                setShowVoting(false)
+                setShowStats(true)
+              }}
             />
           </div>
         ) : (
