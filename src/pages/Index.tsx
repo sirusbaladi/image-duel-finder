@@ -59,16 +59,30 @@ const Index = () => {
   }, [ratings]);
 
   const handleSelection = async (winner: ImageRating, loser: ImageRating) => {
-    const [updatedWinner, updatedLoser] = updateRatings(winner, loser);
+    if (!userData?.gender) {
+      toast.error('Please select your gender before voting');
+      return;
+    }
+
+    const [updatedWinner, updatedLoser] = updateRatings(winner, loser, userData.gender as 'Woman' | 'Man' | 'Other');
 
     try {
       // Update winner
       const { error: winnerError } = await supabase
         .from('images')
         .update({
-          rating: updatedWinner.rating,
-          comparisons: updatedWinner.comparisons,
-          wins: updatedWinner.wins
+          rating_overall: updatedWinner.rating_overall,
+          rating_male: updatedWinner.rating_male,
+          rating_female: updatedWinner.rating_female,
+          comparisons_overall: updatedWinner.comparisons_overall,
+          comparisons_male: updatedWinner.comparisons_male,
+          comparisons_female: updatedWinner.comparisons_female,
+          wins_overall: updatedWinner.wins_overall,
+          wins_male: updatedWinner.wins_male,
+          wins_female: updatedWinner.wins_female,
+          losses_overall: updatedWinner.losses_overall,
+          losses_male: updatedWinner.losses_male,
+          losses_female: updatedWinner.losses_female
         })
         .eq('id', winner.id);
 
@@ -78,9 +92,18 @@ const Index = () => {
       const { error: loserError } = await supabase
         .from('images')
         .update({
-          rating: updatedLoser.rating,
-          comparisons: updatedLoser.comparisons,
-          losses: updatedLoser.losses
+          rating_overall: updatedLoser.rating_overall,
+          rating_male: updatedLoser.rating_male,
+          rating_female: updatedLoser.rating_female,
+          comparisons_overall: updatedLoser.comparisons_overall,
+          comparisons_male: updatedLoser.comparisons_male,
+          comparisons_female: updatedLoser.comparisons_female,
+          wins_overall: updatedLoser.wins_overall,
+          wins_male: updatedLoser.wins_male,
+          wins_female: updatedLoser.wins_female,
+          losses_overall: updatedLoser.losses_overall,
+          losses_male: updatedLoser.losses_male,
+          losses_female: updatedLoser.losses_female
         })
         .eq('id', loser.id);
 

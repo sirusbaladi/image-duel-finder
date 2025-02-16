@@ -11,31 +11,55 @@ export type Database = {
     Tables: {
       images: {
         Row: {
-          comparisons: number
+          comparisons_female: number
+          comparisons_male: number
+          comparisons_overall: number
           created_at: string
           id: string
-          losses: number
-          rating: number
+          losses_female: number
+          losses_male: number
+          losses_overall: number
+          rating_female: number
+          rating_male: number
+          rating_overall: number
           url: string
-          wins: number
+          wins_female: number
+          wins_male: number
+          wins_overall: number
         }
         Insert: {
-          comparisons?: number
+          comparisons_female?: number
+          comparisons_male?: number
+          comparisons_overall?: number
           created_at?: string
           id?: string
-          losses?: number
-          rating?: number
+          losses_female?: number
+          losses_male?: number
+          losses_overall?: number
+          rating_female?: number
+          rating_male?: number
+          rating_overall?: number
           url: string
-          wins?: number
+          wins_female?: number
+          wins_male?: number
+          wins_overall?: number
         }
         Update: {
-          comparisons?: number
+          comparisons_female?: number
+          comparisons_male?: number
+          comparisons_overall?: number
           created_at?: string
           id?: string
-          losses?: number
-          rating?: number
+          losses_female?: number
+          losses_male?: number
+          losses_overall?: number
+          rating_female?: number
+          rating_male?: number
+          rating_overall?: number
           url?: string
-          wins?: number
+          wins_female?: number
+          wins_male?: number
+          wins_overall?: number
         }
         Relationships: []
       }
