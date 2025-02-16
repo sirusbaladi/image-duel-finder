@@ -1,3 +1,4 @@
+
 import { ImageRating } from "./elo";
 
 /**
@@ -17,7 +18,7 @@ export function selectNextPairForComparison(
     // Compute total votes from images array
     // Each vote increments comparisons by 1 on each of the two images in the pair.
     // So we sum them up and divide by 2 to get the total number of pairwise votes.
-    const totalComparisons = images.reduce((sum, img) => sum + img.comparisons, 0);
+    const totalComparisons = images.reduce((sum, img) => sum + img.comparisons_overall, 0);
     const totalVotesSoFar = Math.floor(totalComparisons / 2);
   
     // 1. Early Random Phase
@@ -61,7 +62,7 @@ export function selectAdaptivePair(
 
   for (let i = 0; i < images.length; i++) {
     for (let j = i + 1; j < images.length; j++) {
-      const diff = Math.abs(images[i].rating - images[j].rating);
+      const diff = Math.abs(images[i].rating_overall - images[j].rating_overall);
       if (diff <= ratingDiffThreshold) {
         candidatePairs.push([images[i], images[j]]);
       }

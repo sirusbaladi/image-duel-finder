@@ -20,9 +20,11 @@ export const Stats = ({ ratings, totalComparisons }: StatsProps) => {
   
   const getRatingKey = (category: RatingCategory) => `rating_${category}` as keyof ImageRating;
   
-  const sortedRatings = [...ratings].sort((a, b) => 
-    b[getRatingKey(category)] - a[getRatingKey(category)]
-  );
+  const sortedRatings = [...ratings].sort((a, b) => {
+    const aRating = a[getRatingKey(category)] as number;
+    const bRating = b[getRatingKey(category)] as number;
+    return bRating - aRating;
+  });
   
   const getDisplayImages = () => {
     switch (view) {
@@ -117,7 +119,7 @@ export const Stats = ({ ratings, totalComparisons }: StatsProps) => {
                       {image[winsKey]} W / {image[lossesKey]} L
                     </div>
                     <div className="text-[#000000]">
-                      ELO {Math.round(image[ratingKey])}
+                      ELO {Math.round(Number(image[ratingKey]))}
                     </div>
                   </div>
                 </div>

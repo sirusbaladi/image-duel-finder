@@ -30,7 +30,7 @@ const Index = () => {
       const { data, error } = await supabase
         .from('images')
         .select('*')
-        .order('rating', { ascending: false });
+        .order('rating_overall', { ascending: false });
 
       if (error) {
         toast.error('Failed to load images');
@@ -209,7 +209,7 @@ const Index = () => {
         ) : (
           <Stats 
             ratings={ratings} 
-            totalComparisons={ratings.reduce((sum, img) => sum + img.comparisons, 0)} 
+            totalComparisons={ratings.reduce((sum, img) => sum + img.comparisons_overall, 0)} 
           />
         )}
       </main>
