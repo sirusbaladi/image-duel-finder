@@ -23,22 +23,21 @@ export const UserRegistration = ({ onSubmit }: UserRegistrationProps) => {
     }
   };
 
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button 
           variant="outline" 
           size="lg" 
-          className="flex px-[20px] sm:px-[30px] py-[12px] sm:py-[16px] w-[120px] sm:w-[186px] border border-[#00000033] rounded-[10px] bg-gradient-to-t from-[#F5F5F5] to-[#FEFEFE] shadow-sm text-[#00000099] text-[12px] sm:text-[16px] relative z-10 font-['PP Neue Montreal'] font-thin"
+          className="flex px-[16px] sm:px-[30px] py-[10px] sm:py-[16px] w-[120px] sm:w-[186px] border border-[#00000033] rounded-[10px] bg-gradient-to-t from-[#F5F5F5] to-[#FEFEFE] shadow-sm text-[#00000099] text-[12px] sm:text-[16px] relative z-10 font-['PP Neue Montreal'] font-thin"
         >
-        Yes, let's do it :)
+          Yes, let's do it :)
         </Button>
       </DialogTrigger>
-      <DialogContent className="p-0">
-        <div className="px-6 py-6 md:px-[30px] md:py-[30px]">
+      <DialogContent className="p-0 w-[90%] max-w-md mx-auto">
+        <div className="px-4 py-4 sm:px-6 sm:py-6">
           <div className="space-y-4">
-            <div className="font-semibold text-[16px]">
+            <div className="font-semibold text-[14px] sm:text-[16px]">
               Enter info to appear on the leaderboard.
             </div>
             <div className="space-y-1">
@@ -46,7 +45,7 @@ export const UserRegistration = ({ onSubmit }: UserRegistrationProps) => {
                 placeholder="Your name (optional)"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="placeholder-gray-300 text-[36px] leading-[36px] sm:text-[50px] sm:leading-[50px] font-['PP_Editorial_New'] w-fit rounded-lg outline-none text-gray-600"
+                className="placeholder-gray-300 text-[28px] leading-[32px] sm:text-[36px] sm:leading-[40px] font-['PP_Editorial_New'] w-fit rounded-lg outline-none text-gray-600"
                 type="text"
               />
             </div>
@@ -56,23 +55,21 @@ export const UserRegistration = ({ onSubmit }: UserRegistrationProps) => {
                   <button
                     key={option}
                     onClick={() => setGender(option)}
-                    className={`w-full py-[3px] text-[16px] font-semibold rounded-[10px] border ${gender === option ? 'border-[#caccff] bg-[#f0f1ff]' : 'bg-gradient-to-t from-[#F5F5F5] to-[#FEFEFE]'} text-gray-900 hover:border-[#caccff] hover:bg-[#f8f9ff] transition-all duration-200`}
+                    className={`w-full py-[3px] text-[14px] sm:text-[16px] font-semibold rounded-[10px] border ${gender === option ? 'border-[#caccff] bg-[#f0f1ff]' : 'bg-gradient-to-t from-[#F5F5F5] to-[#FEFEFE]'} text-gray-900 hover:border-[#caccff] hover:bg-[#f8f9ff] transition-all duration-200`}
                   >
                     {option}
                   </button>
                 ))}
               </div>
-
             </div>
             <div className="flex flex-col justify-between pt-4">
               <button
                 onClick={handleSubmit}
                 disabled={!gender}
-                className={`text-[16px] border rounded-[10px] py-3 w-full ${!gender ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:border-[#caccff]'}`}
+                className={`text-[14px] sm:text-[16px] border rounded-[10px] py-2 sm:py-3 w-full ${!gender ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white hover:border-[#caccff]'}`}
               >
                 Begin
               </button>
-
             </div>
           </div>
         </div>
