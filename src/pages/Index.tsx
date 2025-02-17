@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { ImageComparison } from "@/components/ImageComparison";
 import { Stats } from "@/components/Stats";
 import { ImageRating, updateRatings } from "@/utils/elo";
 import { selectNextPairForComparison, recordSeenPair } from "@/utils/pairSelection";
 import { Button } from "@/components/ui/button";
-import { Eye, Lock } from "lucide-react";
+import { Eye, Lock, Loader2 } from "lucide-react";
 import { UserRegistration } from "@/components/UserRegistration";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -20,6 +19,7 @@ const PARTIAL_RANDOM_CHANCE = 0.30;  // 15% chance to pick random in adaptive
 const Index = () => {
   const [showStats, setShowStats] = useState(false);
   const [showVoting, setShowVoting] = useState(false);
+  const [isLoadingPair, setIsLoadingPair] = useState(false);
   const [userData, setUserData] = useState<{ name: string; gender: string } | null>(null);
   const queryClient = useQueryClient();
   const { isUnlocked, remainingSwipes, incrementSwipeCount, userId, deviceType } = useSwipeCount();
@@ -48,6 +48,7 @@ const Index = () => {
 
   useEffect(() => {
     if (ratings.length >= 2) {
+      setIsLoadingPair(true);
       const pair = selectNextPairForComparison(
         ratings,
         RANDOM_PHASE_LIMIT,
@@ -65,6 +66,7 @@ const Index = () => {
       }
       
       setCurrentPair(pair);
+      setIsLoadingPair(false);
     }
   }, [ratings, userData?.gender, userId]);
 
@@ -73,6 +75,8 @@ const Index = () => {
       toast.error('Please select your gender before voting');
       return;
     }
+
+    setIsLoadingPair(true);
 
     // Record this pair as seen
     if (userId) {
@@ -166,6 +170,8 @@ const Index = () => {
     } catch (error) {
       toast.error('Failed to update ratings');
       console.error('Error updating ratings:', error);
+    } finally {
+      setIsLoadingPair(false);
     }
   };
 
@@ -177,7 +183,7 @@ const Index = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse">Loading...</div>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -243,22 +249,28 @@ const Index = () => {
               )}
             </Button>
           </div>
-        ) : showVoting && currentPair ? (
+        ) : showVoting ? (
           <div className="space-y-8">
             <div className="text-center space-y-4">
               <h1 className="text-2xl font-['PP Neue Montreal'] font-thin">Click to choose the better photo!</h1>
             </div>
-            <ImageComparison 
-              imageA={currentPair[0]} 
-              imageB={currentPair[1]} 
-              onSelect={handleSelection}
-              isUnlocked={isUnlocked}
-              remainingSwipes={remainingSwipes}
-              onStatsClick={() => {
-                setShowVoting(false);
-                setShowStats(true);
-              }}
-            />
+            {isLoadingPair ? (
+              <div className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : currentPair ? (
+              <ImageComparison 
+                imageA={currentPair[0]} 
+                imageB={currentPair[1]} 
+                onSelect={handleSelection}
+                isUnlocked={isUnlocked}
+                remainingSwipes={remainingSwipes}
+                onStatsClick={() => {
+                  setShowVoting(false);
+                  setShowStats(true);
+                }}
+              />
+            ) : null}
           </div>
         ) : (
           <Stats 
