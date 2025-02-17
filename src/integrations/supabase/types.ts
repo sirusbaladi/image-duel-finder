@@ -68,6 +68,7 @@ export type Database = {
           created_at: string
           device_id: string
           device_type: string
+          gender: string | null
           id: string
           name: string
           vote_count: number | null
@@ -76,6 +77,7 @@ export type Database = {
           created_at?: string
           device_id: string
           device_type: string
+          gender?: string | null
           id?: string
           name: string
           vote_count?: number | null
@@ -84,6 +86,7 @@ export type Database = {
           created_at?: string
           device_id?: string
           device_type?: string
+          gender?: string | null
           id?: string
           name?: string
           vote_count?: number | null
