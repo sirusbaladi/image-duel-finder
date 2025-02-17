@@ -105,7 +105,7 @@ export const Stats = ({ ratings, totalComparisons }: StatsProps) => {
                     <img
                       src={image.url}
                       alt={`Rank ${index + 1}`}
-                      className="absolute inset-0 w-full h-full object-cover"
+                      className="absolute inset-0 w-full h-full object-cover filter-none [filter:blur(0)] [-webkit-filter:blur(0)] [transform:translateZ(0)] [-webkit-transform:translateZ(0)]"
                     />
                   </div>
                 </div>

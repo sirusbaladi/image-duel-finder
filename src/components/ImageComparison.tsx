@@ -24,8 +24,8 @@ export const ImageComparison = ({ imageA, imageB, onSelect, isUnlocked, remainin
             <img
               src={imageA.url}
               alt="Option A"
-              className="w-full md:w-[400px] h-[300px] md:h-[400px] object-cover"
-            />
+              className="w-full md:w-[400px] h-[300px] md:h-[400px] object-cover filter-none [filter:blur(0)] [-webkit-filter:blur(0)] [transform:translateZ(0)] [-webkit-transform:translateZ(0)]"
+              />
           </button>
         </div>
 
@@ -39,8 +39,8 @@ export const ImageComparison = ({ imageA, imageB, onSelect, isUnlocked, remainin
             <img
               src={imageB.url}
               alt="Option B"
-              className="w-full md:w-[400px] h-[300px] md:h-[400px] object-cover"
-            />
+              className="w-full md:w-[400px] h-[300px] md:h-[400px] object-cover filter-none [filter:blur(0)] [-webkit-filter:blur(0)] [transform:translateZ(0)] [-webkit-transform:translateZ(0)]"
+              />
           </button>
         </div>
       </div>
