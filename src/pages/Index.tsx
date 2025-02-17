@@ -1,8 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { ImageComparison } from "@/components/ImageComparison";
 import { Stats } from "@/components/Stats";
 import { ImageRating, updateRatings } from "@/utils/elo";
-import { selectNextPairForComparison } from "@/utils/pairSelection";
+import { selectNextPairForComparison, recordSeenPair } from "@/utils/pairSelection";
 import { Button } from "@/components/ui/button";
 import { Eye, Lock } from "lucide-react";
 import { UserRegistration } from "@/components/UserRegistration";
@@ -52,16 +53,30 @@ const Index = () => {
         RANDOM_PHASE_LIMIT,
         RATING_DIFF_THRESHOLD,
         PARTIAL_RANDOM_CHANCE,
-        userData?.gender
+        userData?.gender,
+        userId
       );
+      
+      if (!pair) {
+        toast.info("You've seen all possible image combinations!");
+        setShowStats(true);
+        setShowVoting(false);
+        return;
+      }
+      
       setCurrentPair(pair);
     }
-  }, [ratings]);
+  }, [ratings, userData?.gender, userId]);
 
   const handleSelection = async (winner: ImageRating, loser: ImageRating) => {
     if (!userData?.gender) {
       toast.error('Please select your gender before voting');
       return;
+    }
+
+    // Record this pair as seen
+    if (userId) {
+      recordSeenPair(userId, winner, loser);
     }
 
     const [updatedWinner, updatedLoser] = updateRatings(winner, loser, userData.gender as 'Woman' | 'Man' | 'Other');
@@ -134,9 +149,19 @@ const Index = () => {
           ratings,
           RANDOM_PHASE_LIMIT,
           RATING_DIFF_THRESHOLD,
-          PARTIAL_RANDOM_CHANCE
+          PARTIAL_RANDOM_CHANCE,
+          userData.gender,
+          userId
         );
-        setCurrentPair(nextPair);      
+        
+        if (!nextPair) {
+          toast.info("You've seen all possible image combinations!");
+          setShowStats(true);
+          setShowVoting(false);
+          return;
+        }
+        
+        setCurrentPair(nextPair);
       }
     } catch (error) {
       toast.error('Failed to update ratings');

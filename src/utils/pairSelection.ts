@@ -1,42 +1,104 @@
 import { ImageRating } from "./elo";
 
+// Create a key function to consistently identify a pair regardless of order
+const createPairKey = (id1: string, id2: string): string => {
+  return [id1, id2].sort().join('_');
+};
+
+// Get seen pairs from localStorage
+const getSeenPairs = (userId: string): Set<string> => {
+  const seenPairs = localStorage.getItem(`seen_pairs_${userId}`);
+  return seenPairs ? new Set(JSON.parse(seenPairs)) : new Set();
+};
+
+// Save seen pair to localStorage
+const saveSeenPair = (userId: string, id1: string, id2: string) => {
+  const seenPairs = getSeenPairs(userId);
+  seenPairs.add(createPairKey(id1, id2));
+  localStorage.setItem(`seen_pairs_${userId}`, JSON.stringify([...seenPairs]));
+};
+
 /**
- * Selects the next pair for comparison.
- * Now accepts an optional `userGender` parameter to use gender-specific ratings.
- *
- * @param images - list of image ratings
- * @param randomPhaseLimit - threshold for using random selection
- * @param ratingDiffThreshold - maximum allowed rating difference for adaptive selection
- * @param partialRandomChance - chance to pick random even in adaptive phase
- * @param userGender - (optional) user’s gender to base the selection on ('Woman' or any other value for 'Man')
+ * Returns true if this pair has been seen by the user
+ */
+export const hasPairBeenSeen = (userId: string, id1: string, id2: string): boolean => {
+  const seenPairs = getSeenPairs(userId);
+  return seenPairs.has(createPairKey(id1, id2));
+};
+
+/**
+ * Returns a pair of images that hasn't been seen by this user
  */
 export function selectNextPairForComparison(
   images: ImageRating[],
   randomPhaseLimit: number,
   ratingDiffThreshold: number,
   partialRandomChance = 0.15,
-  userGender?: string
-): [ImageRating, ImageRating] {
-  // Determine keys based on userGender (default to overall if not provided)
-  const ratingKey = userGender ? (userGender === 'Woman' ? 'rating_female' : 'rating_male') : 'rating_overall';
-  const comparisonsKey = userGender ? (userGender === 'Woman' ? 'comparisons_female' : 'comparisons_male') : 'comparisons_overall';
+  userGender?: string,
+  userId?: string
+): [ImageRating, ImageRating] | null {
+  if (!userId) return selectRandomPair(images);
 
-  // Compute total votes from images using the appropriate comparisons field
-  const totalComparisons = images.reduce((sum, img) => sum + (img[comparisonsKey] as number), 0);
-  const totalVotesSoFar = Math.floor(totalComparisons / 2);
-
-  // 1. Early Random Phase
-  if (totalVotesSoFar < randomPhaseLimit) {
-    return selectRandomPair(images);
+  const seenPairs = getSeenPairs(userId);
+  const totalPossiblePairs = (images.length * (images.length - 1)) / 2;
+  
+  // If user has seen all possible pairs, return null
+  if (seenPairs.size >= totalPossiblePairs) {
+    return null;
   }
 
-  // 2. Partial Random even in adaptive phase
-  if (Math.random() < partialRandomChance) {
-    return selectRandomPair(images);
+  // Helper function to check if a pair is unseen
+  const isPairUnseen = (img1: ImageRating, img2: ImageRating) => {
+    return !seenPairs.has(createPairKey(img1.id, img2.id));
+  };
+
+  // Try to find an unseen pair using existing selection logic
+  let attempts = 0;
+  const maxAttempts = 10; // Prevent infinite loops
+
+  while (attempts < maxAttempts) {
+    let pair: [ImageRating, ImageRating];
+    
+    // Use existing selection logic
+    const totalComparisons = images.reduce((sum, img) => {
+      const comparisonsKey = userGender === 'Woman' ? 'comparisons_female' : 'comparisons_male';
+      return sum + (img[comparisonsKey] as number);
+    }, 0);
+    const totalVotesSoFar = Math.floor(totalComparisons / 2);
+
+    if (totalVotesSoFar < randomPhaseLimit || Math.random() < partialRandomChance) {
+      pair = findUnseenRandomPair(images, userId);
+      if (pair) return pair;
+    } else {
+      const adaptivePair = selectAdaptivePair(images, ratingDiffThreshold, userGender);
+      if (adaptivePair && isPairUnseen(adaptivePair[0], adaptivePair[1])) {
+        return adaptivePair;
+      }
+    }
+
+    attempts++;
   }
 
-  // 3. Adaptive selection using gender-specific ratings if available
-  return selectAdaptivePair(images, ratingDiffThreshold, userGender);
+  // Fallback: find any unseen pair
+  return findUnseenRandomPair(images, userId);
+}
+
+/**
+ * Returns a random unseen pair of images
+ */
+function findUnseenRandomPair(images: ImageRating[], userId: string): [ImageRating, ImageRating] | null {
+  const seenPairs = getSeenPairs(userId);
+  const shuffled = [...images].sort(() => Math.random() - 0.5);
+
+  for (let i = 0; i < shuffled.length; i++) {
+    for (let j = i + 1; j < shuffled.length; j++) {
+      if (!seenPairs.has(createPairKey(shuffled[i].id, shuffled[j].id))) {
+        return [shuffled[i], shuffled[j]];
+      }
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -134,4 +196,8 @@ export function selectUnderComparedPair(
     partner = images[Math.floor(Math.random() * images.length)];
   } while (partner.id === image.id);
   return [image, partner];
+}
+
+export function recordSeenPair(userId: string, imageA: ImageRating, imageB: ImageRating) {
+  saveSeenPair(userId, imageA.id, imageB.id);
 }
