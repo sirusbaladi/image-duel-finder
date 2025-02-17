@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -17,7 +18,7 @@ export const UserRegistration = ({ onSubmit, userId, deviceType }: UserRegistrat
   const [name, setName] = useState("");
   const [gender, setGender] = useState("");
   const [open, setOpen] = useState(false);
-  const [storedUserData, setStoredUserData] = useState<{ name: string } | null>(null);
+  const [storedUserData, setStoredUserData] = useState<{ name: string; gender: string } | null>(null);
 
   // Check for existing user data
   useEffect(() => {
@@ -26,13 +27,16 @@ export const UserRegistration = ({ onSubmit, userId, deviceType }: UserRegistrat
 
       const { data, error } = await supabase
         .from('user_votes')
-        .select('name, vote_count')
+        .select('name, vote_count, gender')
         .eq('device_id', userId)
         .maybeSingle();
 
       if (data && !error) {
         setStoredUserData(data);
         setName(data.name);
+        if (data.gender) {
+          setGender(data.gender);
+        }
       }
     };
 
@@ -40,9 +44,9 @@ export const UserRegistration = ({ onSubmit, userId, deviceType }: UserRegistrat
   }, [userId]);
 
   const handleButtonClick = async () => {
-    if (storedUserData?.name) {
-      // If we have stored data, skip the dialog and submit directly
-      onSubmit({ name: storedUserData.name, gender: '' });
+    if (storedUserData?.name && storedUserData?.gender) {
+      // If we have both stored name and gender, skip the dialog and submit directly
+      onSubmit({ name: storedUserData.name, gender: storedUserData.gender });
     } else {
       // Otherwise, open the dialog
       setOpen(true);
@@ -59,6 +63,7 @@ export const UserRegistration = ({ onSubmit, userId, deviceType }: UserRegistrat
             .upsert({
               device_id: userId,
               name,
+              gender,
               device_type: deviceType,
               vote_count: 0
             }, {
