@@ -2,6 +2,7 @@
 import { ImageRating } from "@/utils/elo";
 import { Button } from "@/components/ui/button";
 import { Eye, Lock } from "lucide-react";
+import { useState } from "react";
 
 interface ImageComparisonProps {
   imageA: ImageRating;
@@ -13,12 +14,20 @@ interface ImageComparisonProps {
 }
 
 export const ImageComparison = ({ imageA, imageB, onSelect, isUnlocked, remainingSwipes, onStatsClick }: ImageComparisonProps) => {
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const handleImageSelect = async (winner: ImageRating, loser: ImageRating) => {
+    setIsTransitioning(true);
+    await onSelect(winner, loser);
+    setTimeout(() => setIsTransitioning(false), 300); // Match the CSS transition duration
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-col gap-4 sm:gap-6 items-center justify-center">
-      <div className="flex flex-col md:flex-row gap-4 sm:gap-6 items-center justify-center w-full">
+      <div className={`flex flex-col md:flex-row gap-4 sm:gap-6 items-center justify-center w-full transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
         <div className="relative group w-full md:w-auto">
           <button
-            onClick={() => onSelect(imageA, imageB)}
+            onClick={() => handleImageSelect(imageA, imageB)}
             className="relative overflow-hidden rounded-2xl transition-transform duration-200 hover:scale-[1.02] focus:outline-none w-full md:w-auto"
           >
             <img
@@ -33,7 +42,7 @@ export const ImageComparison = ({ imageA, imageB, onSelect, isUnlocked, remainin
 
         <div className="relative group w-full md:w-auto">
           <button
-            onClick={() => onSelect(imageB, imageA)}
+            onClick={() => handleImageSelect(imageB, imageA)}
             className="relative overflow-hidden rounded-2xl transition-transform duration-200 hover:scale-[1.02] focus:outline-none w-full md:w-auto"
           >
             <img

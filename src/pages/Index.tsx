@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { useSwipeCount } from "@/hooks/use-swipe-count";
 
 const RANDOM_PHASE_LIMIT = 5;       // # of initial votes for purely random
-const RATING_DIFF_THRESHOLD = 50;    // consider images with <50 Elo diff
+const RATING_DIFF_THRESHOLD = 30;    // consider images with <50 Elo diff
 const PARTIAL_RANDOM_CHANCE = 0.15;  // 15% chance to pick random in adaptive
 
 const Index = () => {
@@ -158,10 +158,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="py-4 px-6">
+      <header className="py-4 px-10">
         <a 
           href="/" 
-          className="font-['PP Neue Montreal'] font-thin text-[#0A0A0A] hover:scale-[1.02] active:scale-[0.99] transition-all duration-250" 
+          className="font-['PP Neue Montreal'] font-thin text-[#0A0A0A] hover:scale-[1.02] active:scale-[0.99] transition-all duration-250 inline-block" 
           onClick={(e) => {
             e.preventDefault();
             setShowStats(false);
@@ -176,16 +176,16 @@ const Index = () => {
         {!showStats && !showVoting ? (
           <div className="space-y-12">
             <div className="text-center space-y-4">
-              <h1 className="text-5xl font-['PP_Editorial_New'] font-normal max-w-2xl mx-auto leading-tight text-center">
-                <div className="flex items-center justify-center gap-5 mb-2">
-                  <img src={sirusImage} alt="Sirus" className="w-[1em] h-[1em] rounded-md -translate-y-1.0 object-cover" />
+              <h1 className="text-4xl sm:text-5xl font-['PP_Editorial_New'] font-normal max-w-2xl mx-auto leading-tight text-center">
+                <div className="flex items-center justify-center gap-3 sm:gap-5 mb-2">
+                  <img src={sirusImage} alt="Sirus" className="w-[0.8em] sm:w-[1em] h-[0.8em] sm:h-[1em] rounded-md -translate-y-1.0 object-cover" />
                   <span>Sirus is</span>
                 </div>
                 <div className="text-center">
                   (unfortunately)<br />on the dating apps.
                 </div>
               </h1>
-              <p className="text-lg font-['PP Neue Montreal'] font-thin">Help him find his wife by choosing the perfect photos.</p>
+              <p className="text-lg font-['PP Neue Montreal'] font-thin">Help him find his <strong>wife</strong> by choosing the perfect photos.</p>
               <p className="text-lg font-['PP Neue Montreal'] font-thin">Can you help him?</p>
             </div>
 

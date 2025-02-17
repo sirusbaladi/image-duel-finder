@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 
 // Number of swipes required to unlock the leaderboard
-export const SWIPE_THRESHOLD = 0;
+export const SWIPE_THRESHOLD = 20;
 const USER_ID_KEY = 'user_id';
 const SWIPE_COUNT_KEY = 'swipe_count';
 
