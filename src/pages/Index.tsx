@@ -12,9 +12,9 @@ import sirusImage from "@/assets/images/sirus.jpeg";
 import { toast } from "sonner";
 import { useSwipeCount } from "@/hooks/use-swipe-count";
 
-const RANDOM_PHASE_LIMIT = 5;       // # of initial votes for purely random
-const RATING_DIFF_THRESHOLD = 30;    // consider images with <50 Elo diff
-const PARTIAL_RANDOM_CHANCE = 0.15;  // 15% chance to pick random in adaptive
+const RANDOM_PHASE_LIMIT = 20;       // # of initial votes for purely random
+const RATING_DIFF_THRESHOLD = 50;    // consider images with <50 Elo diff
+const PARTIAL_RANDOM_CHANCE = 0.30;  // 15% chance to pick random in adaptive
 
 const Index = () => {
   const [showStats, setShowStats] = useState(false);
@@ -51,7 +51,8 @@ const Index = () => {
         ratings,
         RANDOM_PHASE_LIMIT,
         RATING_DIFF_THRESHOLD,
-        PARTIAL_RANDOM_CHANCE
+        PARTIAL_RANDOM_CHANCE,
+        userData?.gender
       );
       setCurrentPair(pair);
     }

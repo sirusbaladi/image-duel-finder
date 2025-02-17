@@ -1,39 +1,43 @@
-
 import { ImageRating } from "./elo";
 
 /**
- * Selects the next pair for comparison:
- *  1) If totalVotes < randomPhaseLimit, choose random pair.
- *  2) Otherwise, with some small chance (partialRandomChance), still do random.
- *  3) Otherwise, pick an adaptive pair (rating difference < threshold).
+ * Selects the next pair for comparison.
+ * Now accepts an optional `userGender` parameter to use gender-specific ratings.
  *
- * totalVotes can be the sum of all images' comparisons / 2.
+ * @param images - list of image ratings
+ * @param randomPhaseLimit - threshold for using random selection
+ * @param ratingDiffThreshold - maximum allowed rating difference for adaptive selection
+ * @param partialRandomChance - chance to pick random even in adaptive phase
+ * @param userGender - (optional) user’s gender to base the selection on ('Woman' or any other value for 'Man')
  */
 export function selectNextPairForComparison(
-    images: ImageRating[],
-    randomPhaseLimit: number,
-    ratingDiffThreshold: number,
-    partialRandomChance = 0.15
-  ): [ImageRating, ImageRating] {
-    // Compute total votes from images array
-    // Each vote increments comparisons by 1 on each of the two images in the pair.
-    // So we sum them up and divide by 2 to get the total number of pairwise votes.
-    const totalComparisons = images.reduce((sum, img) => sum + img.comparisons_overall, 0);
-    const totalVotesSoFar = Math.floor(totalComparisons / 2);
-  
-    // 1. Early Random Phase
-    if (totalVotesSoFar < randomPhaseLimit) {
-      return selectRandomPair(images);
-    }
-  
-    // 2. Partial Random even in adaptive phase
-    if (Math.random() < partialRandomChance) {
-      return selectRandomPair(images);
-    }
-  
-    // 3. Adaptive
-    return selectAdaptivePair(images, ratingDiffThreshold);
+  images: ImageRating[],
+  randomPhaseLimit: number,
+  ratingDiffThreshold: number,
+  partialRandomChance = 0.15,
+  userGender?: string
+): [ImageRating, ImageRating] {
+  // Determine keys based on userGender (default to overall if not provided)
+  const ratingKey = userGender ? (userGender === 'Woman' ? 'rating_female' : 'rating_male') : 'rating_overall';
+  const comparisonsKey = userGender ? (userGender === 'Woman' ? 'comparisons_female' : 'comparisons_male') : 'comparisons_overall';
+
+  // Compute total votes from images using the appropriate comparisons field
+  const totalComparisons = images.reduce((sum, img) => sum + (img[comparisonsKey] as number), 0);
+  const totalVotesSoFar = Math.floor(totalComparisons / 2);
+
+  // 1. Early Random Phase
+  if (totalVotesSoFar < randomPhaseLimit) {
+    return selectRandomPair(images);
   }
+
+  // 2. Partial Random even in adaptive phase
+  if (Math.random() < partialRandomChance) {
+    return selectRandomPair(images);
+  }
+
+  // 3. Adaptive selection using gender-specific ratings if available
+  return selectAdaptivePair(images, ratingDiffThreshold, userGender);
+}
 
 /**
  * Returns a purely random pair of distinct images.
@@ -51,64 +55,71 @@ export function selectRandomPair(images: ImageRating[]): [ImageRating, ImageRati
 }
 
 /**
- * Returns a pair of images whose rating difference <= ratingDiffThreshold.
- * It first attempts to force a pairing involving an under-compared image.
- * If no such image exists, it falls back to the regular adaptive selection.
+ * Returns a pair of images whose rating difference is within the threshold.
+ * Accepts an optional `userGender` parameter to use gender-specific ratings.
  */
 export function selectAdaptivePair(
   images: ImageRating[],
   ratingDiffThreshold: number,
+  userGender?: string,
   underComparisonThreshold: number = 10
 ): [ImageRating, ImageRating] {
-  // Attempt to select a pair with an under-compared image
-  const underComparedPair = selectUnderComparedPair(images, ratingDiffThreshold, underComparisonThreshold);
+  const ratingKey = userGender ? (userGender === 'Woman' ? 'rating_female' : 'rating_male') : 'rating_overall';
+
+  // First try to force a pairing involving an under-compared image
+  const underComparedPair = selectUnderComparedPair(images, ratingDiffThreshold, userGender, underComparisonThreshold);
   if (underComparedPair) {
     return underComparedPair;
   }
 
-  // If no under-compared pair is available, continue with standard adaptive logic
+  // Otherwise, use standard adaptive logic by collecting candidate pairs with acceptable rating difference
   const candidatePairs: Array<[ImageRating, ImageRating]> = [];
   for (let i = 0; i < images.length; i++) {
     for (let j = i + 1; j < images.length; j++) {
-      const diff = Math.abs(images[i].rating_overall - images[j].rating_overall);
+      const ratingI = (images[i] as any)[ratingKey] as number;
+      const ratingJ = (images[j] as any)[ratingKey] as number;
+      const diff = Math.abs(ratingI - ratingJ);
       if (diff <= ratingDiffThreshold) {
         candidatePairs.push([images[i], images[j]]);
       }
     }
   }
-  
+
   if (candidatePairs.length === 0) {
-    // fallback to random if no close pairs are found
+    // Fallback to random selection if no candidate pairs are found
     return selectRandomPair(images);
   }
-  
-  // Return a random candidate from the list
+
+  // Return a random candidate pair from the list
   const idx = Math.floor(Math.random() * candidatePairs.length);
   return candidatePairs[idx];
 }
 
 /**
  * Selects a pair where at least one image has fewer than `underComparisonThreshold` comparisons.
- * If such an image exists, it picks one and finds a partner within the rating diff threshold.
- * Returns null if no under-compared images are available.
+ * Uses gender-specific comparisons/ratings if `userGender` is provided.
  */
 export function selectUnderComparedPair(
   images: ImageRating[],
   ratingDiffThreshold: number,
+  userGender?: string,
   underComparisonThreshold: number = 5
 ): [ImageRating, ImageRating] | null {
-  // Filter images that haven't been compared enough
-  const underCompared = images.filter(img => img.comparisons_overall < underComparisonThreshold);
+  const ratingKey = userGender ? (userGender === 'Woman' ? 'rating_female' : 'rating_male') : 'rating_overall';
+  const comparisonsKey = userGender ? (userGender === 'Woman' ? 'comparisons_female' : 'comparisons_male') : 'comparisons_overall';
+
+  // Filter images that haven't been compared enough based on the selected comparisons key
+  const underCompared = images.filter(img => (img[comparisonsKey] as number) < underComparisonThreshold);
   if (underCompared.length === 0) return null;
 
   // Pick a random under-compared image
   const image = underCompared[Math.floor(Math.random() * underCompared.length)];
 
-  // Find candidate partners within the acceptable rating difference
+  // Find candidate partners whose gender-specific rating difference is within the threshold
   const candidatePartners = images.filter(
     partner =>
       partner.id !== image.id &&
-      Math.abs(partner.rating_overall - image.rating_overall) <= ratingDiffThreshold
+      Math.abs(((partner as any)[ratingKey] as number) - ((image as any)[ratingKey] as number)) <= ratingDiffThreshold
   );
 
   if (candidatePartners.length > 0) {
@@ -117,7 +128,7 @@ export function selectUnderComparedPair(
     return [image, partner];
   }
 
-  // Fallback: if no candidate meets the rating threshold, pick any other random image
+  // Fallback: if no candidate meets the threshold, pick any other random image
   let partner: ImageRating;
   do {
     partner = images[Math.floor(Math.random() * images.length)];

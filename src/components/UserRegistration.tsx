@@ -99,16 +99,17 @@ export const UserRegistration = ({ onSubmit, userId, deviceType }: UserRegistrat
         <div className="px-4 py-4 sm:px-6 sm:py-6">
           <div className="space-y-4">
             <div className="font-semibold text-[14px] sm:text-[16px]">
-              Enter info to appear on the leaderboard.
+              {/* Enter info to appear on the leaderboard. */}
+              Enter Nickname (can leave blank) & gender
             </div>
             <div className="space-y-1">
               <input
-                placeholder="Your name (optional)"
+                placeholder="Nickname (optional)"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="placeholder-gray-300 text-[28px] leading-[32px] sm:text-[36px] sm:leading-[40px] font-['PP_Editorial_New'] w-fit rounded-lg outline-none text-gray-600"
                 type="text"
-              />
+              /> 
             </div>
             <div className="flex flex-col gap-2">
               <div className="flex gap-2">
