@@ -37,52 +37,108 @@ export function selectNextPairForComparison(
   userGender?: string,
   userId?: string
 ): [ImageRating, ImageRating] | null {
+
+//   return [
+//     {
+//         "id": "4a8462ea-8a8d-48bb-ac24-5bff9b284b08",
+//         "url": "https://raw.githubusercontent.com/sirusbaladi/image-duel-finder/refs/heads/main/src/assets/photos/File%2018.webp",
+//         "rating_overall": 1504,
+//         "comparisons_overall": 70,
+//         "wins_overall": 35,
+//         "losses_overall": 35,
+//         "rating_male": 1492,
+//         "comparisons_male": 31,
+//         "wins_male": 15,
+//         "losses_male": 16,
+//         "rating_female": 1516,
+//         "comparisons_female": 39,
+//         "wins_female": 20,
+//         "losses_female": 19
+//     },
+//     {
+//         "id": "06d96d08-0699-4d7a-aab2-3f13510d06a5",
+//         "url": "https://raw.githubusercontent.com/sirusbaladi/image-duel-finder/refs/heads/main/src/assets/photos/File%2016.webp",
+//         "rating_overall": 1445,
+//         "comparisons_overall": 54,
+//         "wins_overall": 19,
+//         "losses_overall": 35,
+//         "rating_male": 1530,
+//         "comparisons_male": 33,
+//         "wins_male": 17,
+//         "losses_male": 16,
+//         "rating_female": 1311,
+//         "comparisons_female": 21,
+//         "wins_female": 2,
+//         "losses_female": 19
+//     }
+// ]
+
+
   if (!userId) return selectRandomPair(images);
 
   const seenPairs = getSeenPairs(userId);
-  const totalPossiblePairs = (images.length * (images.length - 1)) / 2;
-  
-  // If user has seen all possible pairs, return null
-  if (seenPairs.size >= totalPossiblePairs) {
+  const allPairs = images.flatMap((img1, i) =>
+    images.slice(i + 1).map(img2 => [img1, img2] as [ImageRating, ImageRating])
+  );
+  const unseenPairs = allPairs.filter(pair => !seenPairs.has(createPairKey(pair[0].id, pair[1].id)));
+
+  if (unseenPairs.length === 0) {
     return null;
   }
 
-  // Helper function to check if a pair is unseen
-  const isPairUnseen = (img1: ImageRating, img2: ImageRating) => {
-    return !seenPairs.has(createPairKey(img1.id, img2.id));
-  };
+  const totalComparisons = images.reduce((sum, img) => {
+    const comparisonsKey = userGender === 'Woman' ? 'comparisons_female' : 'comparisons_male';
+    return sum + (img[comparisonsKey] as number);
+  }, 0);
+  const totalVotesSoFar = Math.floor(totalComparisons / 2);
 
-  // Try to find an unseen pair using existing selection logic
-  let attempts = 0;
-  const maxAttempts = 10; // Prevent infinite loops
+  if (totalVotesSoFar < randomPhaseLimit || Math.random() < partialRandomChance) {
+    // Random phase: select any unseen pair
+    return unseenPairs[Math.floor(Math.random() * unseenPairs.length)];
+  } else {
+    // Adaptive phase
+    const ratingKey = userGender ? (userGender === 'Woman' ? 'rating_female' : 'rating_male') : 'rating_overall';
+    const comparisonsKey = userGender ? (userGender === 'Woman' ? 'comparisons_female' : 'comparisons_male') : 'comparisons_overall';
 
-  while (attempts < maxAttempts) {
-    let pair: [ImageRating, ImageRating];
-    
-    // Use existing selection logic
-    const totalComparisons = images.reduce((sum, img) => {
-      const comparisonsKey = userGender === 'Woman' ? 'comparisons_female' : 'comparisons_male';
-      return sum + (img[comparisonsKey] as number);
-    }, 0);
-    const totalVotesSoFar = Math.floor(totalComparisons / 2);
+    // Define under-compared threshold
+    const underComparisonThreshold = 5; // or make it a parameter
 
-    if (totalVotesSoFar < randomPhaseLimit || Math.random() < partialRandomChance) {
-      pair = findUnseenRandomPair(images, userId);
-      if (pair) return pair;
-    } else {
-      const adaptivePair = selectAdaptivePair(images, ratingDiffThreshold, userGender);
-      if (adaptivePair && isPairUnseen(adaptivePair[0], adaptivePair[1])) {
-        return adaptivePair;
-      }
+    // Filter unseen pairs where at least one image is under-compared
+    const underComparedPairs = unseenPairs.filter(pair => {
+      const [img1, img2] = pair;
+      return (img1[comparisonsKey] < underComparisonThreshold) || (img2[comparisonsKey] < underComparisonThreshold);
+    });
+
+    // From underComparedPairs, filter those with rating difference within threshold
+    const underComparedAdaptivePairs = underComparedPairs.filter(pair => {
+      const [img1, img2] = pair;
+      const rating1 = img1[ratingKey];
+      const rating2 = img2[ratingKey];
+      return Math.abs(rating1 - rating2) <= ratingDiffThreshold;
+    });
+
+    if (underComparedAdaptivePairs.length > 0) {
+      // Select randomly from under-compared adaptive pairs
+      return underComparedAdaptivePairs[Math.floor(Math.random() * underComparedAdaptivePairs.length)];
     }
 
-    attempts++;
+    // If no under-compared adaptive pairs, select from all unseen adaptive pairs
+    const adaptivePairs = unseenPairs.filter(pair => {
+      const [img1, img2] = pair;
+      const rating1 = img1[ratingKey];
+      const rating2 = img2[ratingKey];
+      return Math.abs(rating1 - rating2) <= ratingDiffThreshold;
+    });
+
+    if (adaptivePairs.length > 0) {
+      // Select randomly from adaptive pairs
+      return adaptivePairs[Math.floor(Math.random() * adaptivePairs.length)];
+    }
+
+    // If no adaptive pairs, select randomly from all unseen pairs
+    return unseenPairs[Math.floor(Math.random() * unseenPairs.length)];
   }
-
-  // Fallback: find any unseen pair
-  return findUnseenRandomPair(images, userId);
 }
-
 /**
  * Returns a random unseen pair of images
  */

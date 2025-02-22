@@ -11,18 +11,22 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import sirusImage from "@/assets/images/sirus.jpeg";
 import { toast } from "sonner";
 import { useSwipeCount } from "@/hooks/use-swipe-count";
+import { useRef } from "react";
 
 const RANDOM_PHASE_LIMIT = 20;       // # of initial votes for purely random
 const RATING_DIFF_THRESHOLD = 50;    // consider images with <50 Elo diff
 const PARTIAL_RANDOM_CHANCE = 0.30;  // 15% chance to pick random in adaptive
+const TEST_MODE = true;              // When true, skips DB updates for Elo scores
 
 const Index = () => {
+  const hasSetInitialPair = useRef(false);
   const [showStats, setShowStats] = useState(false);
   const [showVoting, setShowVoting] = useState(false);
   const [isLoadingPair, setIsLoadingPair] = useState(false);
   const [userData, setUserData] = useState<{ name: string; gender: string } | null>(null);
   const queryClient = useQueryClient();
   const { isUnlocked, remainingSwipes, incrementSwipeCount, userId, deviceType } = useSwipeCount();
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const { data: ratings = [], isLoading } = useQuery({
     queryKey: ['images'],
@@ -47,107 +51,71 @@ const Index = () => {
   const [currentPair, setCurrentPair] = useState<[ImageRating, ImageRating] | null>(null);
 
   useEffect(() => {
-    if (ratings.length >= 2) {
-      setIsLoadingPair(true);
+    if (
+      showVoting &&
+      ratings.length >= 2 &&
+      userData?.gender &&
+      !hasSetInitialPair.current
+    ) {
+      hasSetInitialPair.current = true; // Mark the initial pair as set
+      setIsLoadingPair(true); // Show a loading indicator
       const pair = selectNextPairForComparison(
         ratings,
         RANDOM_PHASE_LIMIT,
         RATING_DIFF_THRESHOLD,
         PARTIAL_RANDOM_CHANCE,
-        userData?.gender,
+        userData.gender, // Use the submitted gender
         userId
       );
-      
+  
       if (!pair) {
         toast.info("You've seen all possible image combinations!");
         setShowStats(true);
         setShowVoting(false);
         return;
       }
-      
-      setCurrentPair(pair);
-      setIsLoadingPair(false);
+  
+      setCurrentPair(pair); // Set the pair
+      setIsLoadingPair(false); // Hide the loading indicator
     }
-  }, [ratings, userData?.gender, userId]);
+  }, [ratings, userData?.gender, userId, showVoting]);
+
+  useEffect(() => {
+    if (!showVoting) {
+      hasSetInitialPair.current = false; // Reset for the next session
+    }
+  }, [showVoting]);
+
+  const preloadImage = (url: string) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = url;
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+  };
 
   const handleSelection = async (winner: ImageRating, loser: ImageRating) => {
     if (!userData?.gender) {
       toast.error('Please select your gender before voting');
       return;
     }
-
-    setIsLoadingPair(true);
-
+  
+    // Start fade-out animation
+    setIsTransitioning(true);
+  
+    // Wait for fade-out to complete (150ms matches CSS transition duration)
+    await new Promise(resolve => setTimeout(resolve, 150));
+  
     // Record this pair as seen
     if (userId) {
       recordSeenPair(userId, winner, loser);
     }
-
+  
     const [updatedWinner, updatedLoser] = updateRatings(winner, loser, userData.gender as 'Woman' | 'Man' | 'Other');
-
+  
     try {
-      const { error: winnerError } = await supabase
-        .from('images')
-        .update({
-          rating_overall: updatedWinner.rating_overall,
-          rating_male: updatedWinner.rating_male,
-          rating_female: updatedWinner.rating_female,
-          comparisons_overall: updatedWinner.comparisons_overall,
-          comparisons_male: updatedWinner.comparisons_male,
-          comparisons_female: updatedWinner.comparisons_female,
-          wins_overall: updatedWinner.wins_overall,
-          wins_male: updatedWinner.wins_male,
-          wins_female: updatedWinner.wins_female,
-          losses_overall: updatedWinner.losses_overall,
-          losses_male: updatedWinner.losses_male,
-          losses_female: updatedWinner.losses_female
-        })
-        .eq('id', winner.id);
-
-      if (winnerError) throw winnerError;
-
-      const { error: loserError } = await supabase
-        .from('images')
-        .update({
-          rating_overall: updatedLoser.rating_overall,
-          rating_male: updatedLoser.rating_male,
-          rating_female: updatedLoser.rating_female,
-          comparisons_overall: updatedLoser.comparisons_overall,
-          comparisons_male: updatedLoser.comparisons_male,
-          comparisons_female: updatedLoser.comparisons_female,
-          wins_overall: updatedLoser.wins_overall,
-          wins_male: updatedLoser.wins_male,
-          wins_female: updatedLoser.wins_female,
-          losses_overall: updatedLoser.losses_overall,
-          losses_male: updatedLoser.losses_male,
-          losses_female: updatedLoser.losses_female
-        })
-        .eq('id', loser.id);
-
-      if (loserError) throw loserError;
-
-      if (userData.name) {
-        const { data: currentData } = await supabase
-          .from('user_votes')
-          .select('vote_count')
-          .eq('device_id', userId)
-          .maybeSingle();
-
-        const currentVoteCount = currentData?.vote_count || 0;
-
-        const { error: voteError } = await supabase
-          .from('user_votes')
-          .update({ vote_count: currentVoteCount + 1 })
-          .eq('device_id', userId);
-
-        if (voteError) {
-          console.error('Error updating vote count:', voteError);
-        }
-      }
-
-      incrementSwipeCount();
-      await queryClient.invalidateQueries({ queryKey: ['images'] });
-
+      // Select the next pair
       if (ratings.length >= 2) {
         const nextPair = selectNextPairForComparison(
           ratings,
@@ -157,23 +125,110 @@ const Index = () => {
           userData.gender,
           userId
         );
-        
+  
         if (!nextPair) {
           toast.info("You've seen all possible image combinations!");
           setShowStats(true);
           setShowVoting(false);
+          setIsTransitioning(false);
           return;
         }
-        
+  
+        // Preload the next pair's images
+        try {
+          await Promise.all([
+            preloadImage(nextPair[0].url),
+            preloadImage(nextPair[1].url),
+          ]);
+        } catch (error) {
+          console.error('Error preloading images:', error);
+          // Proceed even if preloading fails, but images might load later
+        }
+  
+        // Set the next pair after images are preloaded
         setCurrentPair(nextPair);
+        setIsTransitioning(false); // Start fade-in animation
+      }
+  
+      // Perform database updates in the background
+      if (!TEST_MODE) {
+        // Update winner
+        const { error: winnerError } = await supabase
+          .from('images')
+          .update({
+            rating_overall: updatedWinner.rating_overall,
+            rating_male: updatedWinner.rating_male,
+            rating_female: updatedWinner.rating_female,
+            comparisons_overall: updatedWinner.comparisons_overall,
+            comparisons_male: updatedWinner.comparisons_male,
+            comparisons_female: updatedWinner.comparisons_female,
+            wins_overall: updatedWinner.wins_overall,
+            wins_male: updatedWinner.wins_male,
+            wins_female: updatedWinner.wins_female,
+            losses_overall: updatedWinner.losses_overall,
+            losses_male: updatedWinner.losses_male,
+            losses_female: updatedWinner.losses_female,
+          })
+          .eq('id', winner.id);
+  
+        if (winnerError) throw winnerError;
+  
+        // Update loser
+        const { error: loserError } = await supabase
+          .from('images')
+          .update({
+            rating_overall: updatedLoser.rating_overall,
+            rating_male: updatedLoser.rating_male,
+            rating_female: updatedLoser.rating_female,
+            comparisons_overall: updatedLoser.comparisons_overall,
+            comparisons_male: updatedLoser.comparisons_male,
+            comparisons_female: updatedLoser.comparisons_female,
+            wins_overall: updatedLoser.wins_overall,
+            wins_male: updatedLoser.wins_male,
+            wins_female: updatedLoser.wins_female,
+            losses_overall: updatedLoser.losses_overall,
+            losses_male: updatedLoser.losses_male,
+            losses_female: updatedLoser.losses_female,
+          })
+          .eq('id', loser.id);
+  
+        if (loserError) throw loserError;
+      }
+  
+      // Update user vote count in the background
+      if (userData.name) {
+        const { data: currentData } = await supabase
+          .from('user_votes')
+          .select('vote_count')
+          .eq('device_id', userId)
+          .maybeSingle();
+  
+        const currentVoteCount = currentData?.vote_count || 0;
+  
+        const { error: voteError } = await supabase
+          .from('user_votes')
+          .update({ vote_count: currentVoteCount + 1 })
+          .eq('device_id', userId);
+  
+        if (voteError) {
+          console.error('Error updating vote count:', voteError);
+        }
+      }
+  
+      incrementSwipeCount();
+  
+      // Invalidate queries to refetch in the background (only in non-test mode)
+      if (!TEST_MODE) {
+        await queryClient.invalidateQueries({ queryKey: ['images'] });
       }
     } catch (error) {
       toast.error('Failed to update ratings');
       console.error('Error updating ratings:', error);
-    } finally {
-      setIsLoadingPair(false);
+      setIsTransitioning(false); // Ensure transition state is reset on error
     }
   };
+
+  
 
   const handleUserSubmit = (data: { name: string; gender: string }) => {
     setUserData(data);
@@ -269,6 +324,7 @@ const Index = () => {
                   setShowVoting(false);
                   setShowStats(true);
                 }}
+                isTransitioning={isTransitioning}
               />
             ) : null}
           </div>
