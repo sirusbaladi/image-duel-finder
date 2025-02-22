@@ -16,7 +16,7 @@ import { useRef } from "react";
 const RANDOM_PHASE_LIMIT = 20;       // # of initial votes for purely random
 const RATING_DIFF_THRESHOLD = 50;    // consider images with <50 Elo diff
 const PARTIAL_RANDOM_CHANCE = 0.30;  // 15% chance to pick random in adaptive
-const TEST_MODE = true;              // When true, skips DB updates for Elo scores
+const TEST_MODE = false;              // When true, skips DB updates for Elo scores
 
 const Index = () => {
   const hasSetInitialPair = useRef(false);
@@ -96,6 +96,7 @@ const Index = () => {
   };
 
   const handleSelection = async (winner: ImageRating, loser: ImageRating) => {
+    // Check if user has selected their gender
     if (!userData?.gender) {
       toast.error('Please select your gender before voting');
       return;
@@ -112,10 +113,15 @@ const Index = () => {
       recordSeenPair(userId, winner, loser);
     }
   
-    const [updatedWinner, updatedLoser] = updateRatings(winner, loser, userData.gender as 'Woman' | 'Man' | 'Other');
+    // Update ratings for winner and loser based on user gender
+    const [updatedWinner, updatedLoser] = updateRatings(
+      winner,
+      loser,
+      userData.gender as 'Woman' | 'Man' | 'Other'
+    );
   
     try {
-      // Select the next pair
+      // Select the next pair for comparison
       if (ratings.length >= 2) {
         const nextPair = selectNextPairForComparison(
           ratings,
@@ -126,6 +132,7 @@ const Index = () => {
           userId
         );
   
+        // If no next pair is available, show stats
         if (!nextPair) {
           toast.info("You've seen all possible image combinations!");
           setShowStats(true);
@@ -142,7 +149,6 @@ const Index = () => {
           ]);
         } catch (error) {
           console.error('Error preloading images:', error);
-          // Proceed even if preloading fails, but images might load later
         }
   
         // Set the next pair after images are preloaded
@@ -152,7 +158,7 @@ const Index = () => {
   
       // Perform database updates in the background
       if (!TEST_MODE) {
-        // Update winner
+        // Update winner in the database
         const { error: winnerError } = await supabase
           .from('images')
           .update({
@@ -173,7 +179,7 @@ const Index = () => {
   
         if (winnerError) throw winnerError;
   
-        // Update loser
+        // Update loser in the database
         const { error: loserError } = await supabase
           .from('images')
           .update({
@@ -196,7 +202,7 @@ const Index = () => {
       }
   
       // Update user vote count in the background
-      if (userData.name) {
+      if (userId) {
         const { data: currentData } = await supabase
           .from('user_votes')
           .select('vote_count')
@@ -215,6 +221,7 @@ const Index = () => {
         }
       }
   
+      // Increment swipe count
       incrementSwipeCount();
   
       // Invalidate queries to refetch in the background (only in non-test mode)
@@ -227,7 +234,6 @@ const Index = () => {
       setIsTransitioning(false); // Ensure transition state is reset on error
     }
   };
-
   
 
   const handleUserSubmit = (data: { name: string; gender: string }) => {

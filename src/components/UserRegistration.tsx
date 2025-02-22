@@ -44,40 +44,38 @@ export const UserRegistration = ({ onSubmit, userId, deviceType }: UserRegistrat
   }, [userId]);
 
   const handleButtonClick = async () => {
-    if (storedUserData?.name && storedUserData?.gender) {
-      // If we have both stored name and gender, skip the dialog and submit directly
-      onSubmit({ name: storedUserData.name, gender: storedUserData.gender });
+    if (storedUserData?.gender) {
+      // If gender is stored, proceed with existing data (name can be null or empty)
+      onSubmit({ name: storedUserData.name || '', gender: storedUserData.gender });
     } else {
-      // Otherwise, open the dialog
+      // Open dialog to collect gender (and optional name)
       setOpen(true);
     }
   };
-
+  
   const handleSubmit = async () => {
     if (gender) {
-      if (name) {
-        try {
-          // Try to insert or update user vote record
-          const { error } = await supabase
-            .from('user_votes')
-            .upsert({
-              device_id: userId,
-              name,
-              gender,
-              device_type: deviceType,
-              vote_count: 0
-            }, {
-              onConflict: 'device_id'
-            });
-
-          if (error) {
-            console.error('Error saving user data:', error);
-          }
-        } catch (error) {
-          console.error('Error in handleSubmit:', error);
+      try {
+        // Always upsert user data, even if name is empty
+        const { error } = await supabase
+          .from('user_votes')
+          .upsert({
+            device_id: userId,
+            name: name || null, // Store null if no name is provided
+            gender,
+            device_type: deviceType,
+            vote_count: 0
+          }, {
+            onConflict: 'device_id' // Update existing record if device_id exists
+          });
+  
+        if (error) {
+          console.error('Error saving user data:', error);
         }
+      } catch (error) {
+        console.error('Error in handleSubmit:', error);
       }
-
+  
       onSubmit({ name, gender });
       setOpen(false);
     }
