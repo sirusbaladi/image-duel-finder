@@ -199,6 +199,22 @@ const Index = () => {
           .eq('id', loser.id);
   
         if (loserError) throw loserError;
+  
+        // Record the comparison
+        const [imageA, imageB] = [winner, loser].sort((a, b) => a.id.localeCompare(b.id));
+        const { error: comparisonError } = await supabase
+          .from('image_comparisons')
+          .insert({
+            user_id: userId,
+            image_a_id: imageA.id,
+            image_b_id: imageB.id,
+            winner_id: winner.id,
+            user_gender: userData.gender,
+          });
+  
+        if (comparisonError) {
+          console.error('Error recording comparison:', comparisonError);
+        }
       }
   
       // Update user vote count in the background

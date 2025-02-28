@@ -9,6 +9,61 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      image_comparisons: {
+        Row: {
+          id: string
+          user_id: string
+          image_a_id: string
+          image_b_id: string
+          winner_id: string
+          timestamp: string
+          user_gender: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          image_a_id: string
+          image_b_id: string
+          winner_id: string
+          timestamp?: string
+          user_gender: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          image_a_id?: string
+          image_b_id?: string
+          winner_id?: string
+          timestamp?: string
+          user_gender?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_user"
+            columns: ["user_id"]
+            referencedRelation: "user_votes"
+            referencedColumns: ["device_id"]
+          },
+          {
+            foreignKeyName: "fk_image_a"
+            columns: ["image_a_id"]
+            referencedRelation: "images"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_image_b"
+            columns: ["image_b_id"]
+            referencedRelation: "images"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_winner"
+            columns: ["winner_id"]
+            referencedRelation: "images"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       images: {
         Row: {
           comparisons_female: number
