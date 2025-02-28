@@ -35,109 +35,88 @@ export function selectNextPairForComparison(
   ratingDiffThreshold: number,
   partialRandomChance = 0.15,
   userGender?: string,
-  userId?: string
+  userId?: string,
+  bottomN: number = 6,         // Number of bottom images to consider for exclusion
+  exclusionThreshold: number = 20  // Threshold for excluding images (if >= this many comparisons)
 ): [ImageRating, ImageRating] | null {
-
-//   return [
-//     {
-//         "id": "4a8462ea-8a8d-48bb-ac24-5bff9b284b08",
-//         "url": "https://raw.githubusercontent.com/sirusbaladi/image-duel-finder/refs/heads/main/src/assets/photos/File%2018.webp",
-//         "rating_overall": 1504,
-//         "comparisons_overall": 70,
-//         "wins_overall": 35,
-//         "losses_overall": 35,
-//         "rating_male": 1492,
-//         "comparisons_male": 31,
-//         "wins_male": 15,
-//         "losses_male": 16,
-//         "rating_female": 1516,
-//         "comparisons_female": 39,
-//         "wins_female": 20,
-//         "losses_female": 19
-//     },
-//     {
-//         "id": "06d96d08-0699-4d7a-aab2-3f13510d06a5",
-//         "url": "https://raw.githubusercontent.com/sirusbaladi/image-duel-finder/refs/heads/main/src/assets/photos/File%2016.webp",
-//         "rating_overall": 1445,
-//         "comparisons_overall": 54,
-//         "wins_overall": 19,
-//         "losses_overall": 35,
-//         "rating_male": 1530,
-//         "comparisons_male": 33,
-//         "wins_male": 17,
-//         "losses_male": 16,
-//         "rating_female": 1311,
-//         "comparisons_female": 21,
-//         "wins_female": 2,
-//         "losses_female": 19
-//     }
-// ]
-
-
   if (!userId) return selectRandomPair(images);
 
+  // Get unseen pairs for the user
   const seenPairs = getSeenPairs(userId);
   const allPairs = images.flatMap((img1, i) =>
     images.slice(i + 1).map(img2 => [img1, img2] as [ImageRating, ImageRating])
   );
-  const unseenPairs = allPairs.filter(pair => !seenPairs.has(createPairKey(pair[0].id, pair[1].id)));
+  const unseenPairs = allPairs.filter(pair =>
+    !seenPairs.has(createPairKey(pair[0].id, pair[1].id))
+  );
 
   if (unseenPairs.length === 0) {
     return null;
   }
 
-  const totalComparisons = images.reduce((sum, img) => {
-    const comparisonsKey = userGender === 'Woman' ? 'comparisons_female' : 'comparisons_male';
-    return sum + (img[comparisonsKey] as number);
-  }, 0);
+  // Determine rating and comparisons keys based on user gender
+  const ratingKey = userGender
+    ? userGender === 'Woman'
+      ? 'rating_female'
+      : 'rating_male'
+    : 'rating_overall';
+  const comparisonsKey = userGender
+    ? userGender === 'Woman'
+      ? 'comparisons_female'
+      : 'comparisons_male'
+    : 'comparisons_overall';
+
+  // Calculate total votes to determine phase
+  const totalComparisons = images.reduce(
+    (sum, img) => sum + (img[comparisonsKey] as number),
+    0
+  );
   const totalVotesSoFar = Math.floor(totalComparisons / 2);
 
+  // Random phase or random chance: select any unseen pair (no exclusion)
   if (totalVotesSoFar < randomPhaseLimit || Math.random() < partialRandomChance) {
-    // Random phase: select any unseen pair
-    return unseenPairs[Math.floor(Math.random() * unseenPairs.length)];
-  } else {
-    // Adaptive phase
-    const ratingKey = userGender ? (userGender === 'Woman' ? 'rating_female' : 'rating_male') : 'rating_overall';
-    const comparisonsKey = userGender ? (userGender === 'Woman' ? 'comparisons_female' : 'comparisons_male') : 'comparisons_overall';
-
-    // Define under-compared threshold
-    const underComparisonThreshold = 5; // or make it a parameter
-
-    // Filter unseen pairs where at least one image is under-compared
-    const underComparedPairs = unseenPairs.filter(pair => {
-      const [img1, img2] = pair;
-      return (img1[comparisonsKey] < underComparisonThreshold) || (img2[comparisonsKey] < underComparisonThreshold);
-    });
-
-    // From underComparedPairs, filter those with rating difference within threshold
-    const underComparedAdaptivePairs = underComparedPairs.filter(pair => {
-      const [img1, img2] = pair;
-      const rating1 = img1[ratingKey];
-      const rating2 = img2[ratingKey];
-      return Math.abs(rating1 - rating2) <= ratingDiffThreshold;
-    });
-
-    if (underComparedAdaptivePairs.length > 0) {
-      // Select randomly from under-compared adaptive pairs
-      return underComparedAdaptivePairs[Math.floor(Math.random() * underComparedAdaptivePairs.length)];
-    }
-
-    // If no under-compared adaptive pairs, select from all unseen adaptive pairs
-    const adaptivePairs = unseenPairs.filter(pair => {
-      const [img1, img2] = pair;
-      const rating1 = img1[ratingKey];
-      const rating2 = img2[ratingKey];
-      return Math.abs(rating1 - rating2) <= ratingDiffThreshold;
-    });
-
-    if (adaptivePairs.length > 0) {
-      // Select randomly from adaptive pairs
-      return adaptivePairs[Math.floor(Math.random() * adaptivePairs.length)];
-    }
-
-    // If no adaptive pairs, select randomly from all unseen pairs
     return unseenPairs[Math.floor(Math.random() * unseenPairs.length)];
   }
+
+  // Adaptive phase
+  // Step 1: Identify excluded images (bottom N with >= exclusionThreshold comparisons)
+  const sortedImages = [...images].sort((a, b) => a[ratingKey] - b[ratingKey]);
+  const bottomImages = sortedImages.slice(0, bottomN);
+  const excludedImages = bottomImages.filter(img => img[comparisonsKey] >= exclusionThreshold);
+  const excludedIds = new Set(excludedImages.map(img => img.id));
+
+  // Step 2: Select under-compared pairs (at least one image < 5 comparisons)
+  const underComparedPairs = unseenPairs.filter(pair => {
+    const [img1, img2] = pair;
+    return img1[comparisonsKey] < 5 || img2[comparisonsKey] < 5;
+  });
+  const underComparedAdaptivePairs = underComparedPairs.filter(pair => {
+    const [img1, img2] = pair;
+    return Math.abs(img1[ratingKey] - img2[ratingKey]) <= ratingDiffThreshold;
+  });
+
+  if (underComparedAdaptivePairs.length > 0) {
+    return underComparedAdaptivePairs[
+      Math.floor(Math.random() * underComparedAdaptivePairs.length)
+    ];
+  }
+
+  // Step 3: Select adaptive pairs, excluding bottom N with >= exclusionThreshold comparisons
+  const adaptivePairs = unseenPairs.filter(pair => {
+    const [img1, img2] = pair;
+    return (
+      !excludedIds.has(img1.id) &&
+      !excludedIds.has(img2.id) &&
+      Math.abs(img1[ratingKey] - img2[ratingKey]) <= ratingDiffThreshold
+    );
+  });
+
+  if (adaptivePairs.length > 0) {
+    return adaptivePairs[Math.floor(Math.random() * adaptivePairs.length)];
+  }
+
+  // Step 4: Fallback to random unseen pair if no adaptive pairs available
+  return unseenPairs[Math.floor(Math.random() * unseenPairs.length)];
 }
 /**
  * Returns a random unseen pair of images
