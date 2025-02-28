@@ -36,7 +36,7 @@ export function selectNextPairForComparison(
   partialRandomChance = 0.15,
   userGender?: string,
   userId?: string,
-  bottomN: number = 6,         // Number of bottom images to consider for exclusion
+  bottomN: number = 2,         // Number of bottom images to consider for exclusion
   exclusionThreshold: number = 20  // Threshold for excluding images (if >= this many comparisons)
 ): [ImageRating, ImageRating] | null {
   if (!userId) return selectRandomPair(images);
