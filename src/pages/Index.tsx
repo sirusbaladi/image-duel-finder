@@ -14,7 +14,7 @@ import { useSwipeCount } from "@/hooks/use-swipe-count";
 import { useRef } from "react";
 
 const RANDOM_PHASE_LIMIT = 20;       // # of initial votes for purely random
-const RATING_DIFF_THRESHOLD = 50;    // consider images with <50 Elo diff
+const RATING_DIFF_THRESHOLD = 150;    // consider images with <50 Elo diff
 const PARTIAL_RANDOM_CHANCE = 0.20;  // 15% chance to pick random in adaptive
 const TEST_MODE = false;              // When true, skips DB updates for Elo scores
 
