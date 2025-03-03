@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ImageComparison } from "@/components/ImageComparison";
 import { Stats } from "@/components/Stats";
 import { ImageRating, updateRatings } from "@/utils/elo";
-import { selectNextPairForComparison, recordSeenPair } from "@/utils/pairSelection";
+import { selectNextPairForComparison as selectNextPairElo, recordSeenPair as recordSeenPairElo } from "@/utils/pairSelection";
+import { selectNextPairForComparison as selectNextPairGlicko, recordSeenPair as recordSeenPairGlicko } from "@/utils/pairSelectionGlicko";
 import { Button } from "@/components/ui/button";
 import { Eye, Lock, Loader2 } from "lucide-react";
 import { UserRegistration } from "@/components/UserRegistration";
@@ -11,17 +12,33 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import sirusImage from "@/assets/images/sirus.jpeg";
 import { toast } from "sonner";
 import { useSwipeCount } from "@/hooks/use-swipe-count";
-import { useRef } from "react";
+import { TopFive } from "@/components/TopFive";
 
-const RANDOM_PHASE_LIMIT = 20;       // # of initial votes for purely random
-const RATING_DIFF_THRESHOLD = 150;    // consider images with <50 Elo diff
-const PARTIAL_RANDOM_CHANCE = 0.20;  // 15% chance to pick random in adaptive
-const TEST_MODE = false;              // When true, skips DB updates for Elo scores
+type RatingSystemType = "elo" | "glicko";
+const RATING_SYSTEM: RatingSystemType = "glicko" as RatingSystemType; // Toggle between "elo" and "glicko"
+const RANDOM_PHASE_LIMIT = 20;
+const RATING_DIFF_THRESHOLD = 150;
+const PARTIAL_RANDOM_CHANCE = 0.20;
+const TEST_MODE = false;
+
+const selectNextPairForComparison: (
+  images: ImageRating[],
+  randomPhaseLimit: number,
+  ratingDiffThresholdOrPartialRandomChance: number,
+  partialRandomChanceOrUserGender?: number | string,
+  userGenderOrUserId?: string,
+  userId?: string
+) => [ImageRating, ImageRating] | null = RATING_SYSTEM === "elo"
+  ? selectNextPairElo
+  : selectNextPairGlicko as any; // Refine type if needed
+
+const recordSeenPair = RATING_SYSTEM === "elo" ? recordSeenPairElo : recordSeenPairGlicko;
 
 const Index = () => {
   const hasSetInitialPair = useRef(false);
   const [showStats, setShowStats] = useState(false);
   const [showVoting, setShowVoting] = useState(false);
+  const [showHi, setShowHi] = useState(false);
   const [isLoadingPair, setIsLoadingPair] = useState(false);
   const [userData, setUserData] = useState<{ name: string; gender: string } | null>(null);
   const queryClient = useQueryClient();
@@ -43,7 +60,13 @@ const Index = () => {
 
       return data.map(img => ({
         ...img,
-        id: img.id.toString()
+        id: img.id.toString(),
+        glicko_rating_overall: img.glicko_rating_overall ?? 1500,
+        glicko_rating_male: img.glicko_rating_male ?? 1500,
+        glicko_rating_female: img.glicko_rating_female ?? 1500,
+        glicko_overall_rd: img.glicko_overall_rd ?? 350,
+        glicko_male_rd: img.glicko_male_rd ?? 350,
+        glicko_female_rd: img.glicko_female_rd ?? 350,
       })) as ImageRating[];
     }
   });
@@ -57,32 +80,30 @@ const Index = () => {
       userData?.gender &&
       !hasSetInitialPair.current
     ) {
-      hasSetInitialPair.current = true; // Mark the initial pair as set
-      setIsLoadingPair(true); // Show a loading indicator
+      hasSetInitialPair.current = true;
+      setIsLoadingPair(true);
       const pair = selectNextPairForComparison(
         ratings,
         RANDOM_PHASE_LIMIT,
-        RATING_DIFF_THRESHOLD,
-        PARTIAL_RANDOM_CHANCE,
-        userData.gender, // Use the submitted gender
-        userId
+        RATING_SYSTEM === "elo" ? RATING_DIFF_THRESHOLD : PARTIAL_RANDOM_CHANCE,
+        RATING_SYSTEM === "elo" ? PARTIAL_RANDOM_CHANCE : userData.gender,
+        RATING_SYSTEM === "elo" ? userData.gender : userId,
+        RATING_SYSTEM === "elo" ? userId : undefined
       );
-  
       if (!pair) {
         toast.info("You've seen all possible image combinations!");
         setShowStats(true);
         setShowVoting(false);
         return;
       }
-  
-      setCurrentPair(pair); // Set the pair
-      setIsLoadingPair(false); // Hide the loading indicator
+      setCurrentPair(pair);
+      setIsLoadingPair(false);
     }
   }, [ratings, userData?.gender, userId, showVoting]);
 
   useEffect(() => {
     if (!showVoting) {
-      hasSetInitialPair.current = false; // Reset for the next session
+      hasSetInitialPair.current = false;
     }
   }, [showVoting]);
 
@@ -96,43 +117,34 @@ const Index = () => {
   };
 
   const handleSelection = async (winner: ImageRating, loser: ImageRating) => {
-    // Check if user has selected their gender
     if (!userData?.gender) {
       toast.error('Please select your gender before voting');
       return;
     }
-  
-    // Start fade-out animation
+
     setIsTransitioning(true);
-  
-    // Wait for fade-out to complete (150ms matches CSS transition duration)
     await new Promise(resolve => setTimeout(resolve, 150));
-  
-    // Record this pair as seen
+
     if (userId) {
       recordSeenPair(userId, winner, loser);
     }
-  
-    // Update ratings for winner and loser based on user gender
+
     const [updatedWinner, updatedLoser] = updateRatings(
       winner,
       loser,
       userData.gender as 'Woman' | 'Man' | 'Other'
     );
-  
+
     try {
-      // Select the next pair for comparison
       if (ratings.length >= 2) {
         const nextPair = selectNextPairForComparison(
           ratings,
           RANDOM_PHASE_LIMIT,
-          RATING_DIFF_THRESHOLD,
-          PARTIAL_RANDOM_CHANCE,
-          userData.gender,
-          userId
+          RATING_SYSTEM === "elo" ? RATING_DIFF_THRESHOLD : PARTIAL_RANDOM_CHANCE,
+          RATING_SYSTEM === "elo" ? PARTIAL_RANDOM_CHANCE : userData.gender,
+          RATING_SYSTEM === "elo" ? userData.gender : userId,
+          RATING_SYSTEM === "elo" ? userId : undefined
         );
-  
-        // If no next pair is available, show stats
         if (!nextPair) {
           toast.info("You've seen all possible image combinations!");
           setShowStats(true);
@@ -140,8 +152,6 @@ const Index = () => {
           setIsTransitioning(false);
           return;
         }
-  
-        // Preload the next pair's images
         try {
           await Promise.all([
             preloadImage(nextPair[0].url),
@@ -150,21 +160,23 @@ const Index = () => {
         } catch (error) {
           console.error('Error preloading images:', error);
         }
-  
-        // Set the next pair after images are preloaded
         setCurrentPair(nextPair);
-        setIsTransitioning(false); // Start fade-in animation
+        setIsTransitioning(false);
       }
-  
-      // Perform database updates in the background
+
       if (!TEST_MODE) {
-        // Update winner in the database
         const { error: winnerError } = await supabase
           .from('images')
           .update({
             rating_overall: updatedWinner.rating_overall,
             rating_male: updatedWinner.rating_male,
             rating_female: updatedWinner.rating_female,
+            glicko_rating_overall: updatedWinner.glicko_rating_overall,
+            glicko_rating_male: updatedWinner.glicko_rating_male,
+            glicko_rating_female: updatedWinner.glicko_rating_female,
+            glicko_overall_rd: updatedWinner.glicko_overall_rd,
+            glicko_male_rd: updatedWinner.glicko_male_rd,
+            glicko_female_rd: updatedWinner.glicko_female_rd,
             comparisons_overall: updatedWinner.comparisons_overall,
             comparisons_male: updatedWinner.comparisons_male,
             comparisons_female: updatedWinner.comparisons_female,
@@ -176,16 +188,21 @@ const Index = () => {
             losses_female: updatedWinner.losses_female,
           })
           .eq('id', winner.id);
-  
+
         if (winnerError) throw winnerError;
-  
-        // Update loser in the database
+
         const { error: loserError } = await supabase
           .from('images')
           .update({
             rating_overall: updatedLoser.rating_overall,
             rating_male: updatedLoser.rating_male,
             rating_female: updatedLoser.rating_female,
+            glicko_rating_overall: updatedLoser.glicko_rating_overall,
+            glicko_rating_male: updatedLoser.glicko_rating_male,
+            glicko_rating_female: updatedLoser.glicko_rating_female,
+            glicko_overall_rd: updatedLoser.glicko_overall_rd,
+            glicko_male_rd: updatedLoser.glicko_male_rd,
+            glicko_female_rd: updatedLoser.glicko_female_rd,
             comparisons_overall: updatedLoser.comparisons_overall,
             comparisons_male: updatedLoser.comparisons_male,
             comparisons_female: updatedLoser.comparisons_female,
@@ -197,10 +214,9 @@ const Index = () => {
             losses_female: updatedLoser.losses_female,
           })
           .eq('id', loser.id);
-  
+
         if (loserError) throw loserError;
-  
-        // Record the comparison
+
         const [imageA, imageB] = [winner, loser].sort((a, b) => a.id.localeCompare(b.id));
         const { error: comparisonError } = await supabase
           .from('image_comparisons')
@@ -211,46 +227,42 @@ const Index = () => {
             winner_id: winner.id,
             user_gender: userData.gender,
           });
-  
+
         if (comparisonError) {
           console.error('Error recording comparison:', comparisonError);
         }
       }
-  
-      // Update user vote count in the background
+
       if (userId) {
         const { data: currentData } = await supabase
           .from('user_votes')
           .select('vote_count')
           .eq('device_id', userId)
           .maybeSingle();
-  
+
         const currentVoteCount = currentData?.vote_count || 0;
-  
+
         const { error: voteError } = await supabase
           .from('user_votes')
           .update({ vote_count: currentVoteCount + 1 })
           .eq('device_id', userId);
-  
+
         if (voteError) {
           console.error('Error updating vote count:', voteError);
         }
       }
-  
-      // Increment swipe count
+
       incrementSwipeCount();
-  
-      // Invalidate queries to refetch in the background (only in non-test mode)
+
       if (!TEST_MODE) {
         await queryClient.invalidateQueries({ queryKey: ['images'] });
       }
     } catch (error) {
       toast.error('Failed to update ratings');
       console.error('Error updating ratings:', error);
-      setIsTransitioning(false); // Ensure transition state is reset on error
+      setIsTransitioning(false);
     }
   };
-  
 
   const handleUserSubmit = (data: { name: string; gender: string }) => {
     setUserData(data);
@@ -267,7 +279,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="py-4 px-10">
+      <header className="py-4 px-10 flex justify-between items-center">
         <a 
           href="/" 
           className="font-['PP Neue Montreal'] font-thin text-[#0A0A0A] hover:scale-[1.02] active:scale-[0.99] transition-all duration-250 inline-block" 
@@ -279,10 +291,31 @@ const Index = () => {
         >
           Sirus.nyc
         </a>
+        {showStats && (
+          <a 
+            href="#" 
+            className="font-['PP Neue Montreal'] font-thin text-[#0A0A0A] hover:scale-[1.02] active:scale-[0.99] transition-all duration-250 inline-block"
+            onClick={(e) => {
+              e.preventDefault();
+              setShowStats(false);
+              setShowVoting(false);
+              setShowHi(true);
+            }}
+          >
+            Get Top 5
+          </a>
+        )}
       </header>
 
       <main className="flex-1 container max-w-5xl mx-auto py-12 px-4 flex items-center justify-center">
-        {!showStats && !showVoting ? (
+        {showHi ? (
+          <TopFive 
+            onBackClick={() => {
+              setShowHi(false);
+              setShowStats(true);
+            }}
+          />
+        ) : !showStats && !showVoting ? (
           <div className="space-y-12">
             <div className="text-center space-y-4">
               <h1 className="text-4xl sm:text-5xl font-['PP_Editorial_New'] font-normal max-w-2xl mx-auto leading-tight text-center">
@@ -353,7 +386,7 @@ const Index = () => {
         ) : (
           <Stats 
             ratings={ratings} 
-            totalComparisons={ratings.reduce((sum, img) => sum + img.comparisons_overall, 0)} 
+            totalComparisons={ratings.reduce((sum, img) => sum + (img.comparisons_overall ?? 0), 0)} 
           />
         )}
       </main>

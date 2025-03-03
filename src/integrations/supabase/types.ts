@@ -70,6 +70,12 @@ export type Database = {
           comparisons_male: number
           comparisons_overall: number
           created_at: string
+          glicko_female_rd: number
+          glicko_male_rd: number
+          glicko_overall_rd: number
+          glicko_rating_female: number
+          glicko_rating_male: number
+          glicko_rating_overall: number
           id: string
           losses_female: number
           losses_male: number
@@ -87,6 +93,12 @@ export type Database = {
           comparisons_male?: number
           comparisons_overall?: number
           created_at?: string
+          glicko_female_rd?: number
+          glicko_male_rd?: number
+          glicko_overall_rd?: number
+          glicko_rating_female?: number
+          glicko_rating_male?: number
+          glicko_rating_overall?: number
           id?: string
           losses_female?: number
           losses_male?: number
@@ -104,6 +116,12 @@ export type Database = {
           comparisons_male?: number
           comparisons_overall?: number
           created_at?: string
+          glicko_female_rd?: number
+          glicko_male_rd?: number
+          glicko_overall_rd?: number
+          glicko_rating_female?: number
+          glicko_rating_male?: number
+          glicko_rating_overall?: number
           id?: string
           losses_female?: number
           losses_male?: number
