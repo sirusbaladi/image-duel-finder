@@ -61,6 +61,7 @@ const Index = () => {
       return data.map(img => ({
         ...img,
         id: img.id.toString(),
+        active: img.active ?? true,
         glicko_rating_overall: img.glicko_rating_overall ?? 1500,
         glicko_rating_male: img.glicko_rating_male ?? 1500,
         glicko_rating_female: img.glicko_rating_female ?? 1500,
@@ -71,19 +72,21 @@ const Index = () => {
     }
   });
 
+  const activeRatings = ratings.filter(img => img.active);
+
   const [currentPair, setCurrentPair] = useState<[ImageRating, ImageRating] | null>(null);
 
   useEffect(() => {
     if (
       showVoting &&
-      ratings.length >= 2 &&
+      activeRatings.length >= 2 &&
       userData?.gender &&
       !hasSetInitialPair.current
     ) {
       hasSetInitialPair.current = true;
       setIsLoadingPair(true);
       const pair = selectNextPairForComparison(
-        ratings,
+        activeRatings,
         RANDOM_PHASE_LIMIT,
         RATING_SYSTEM === "elo" ? RATING_DIFF_THRESHOLD : PARTIAL_RANDOM_CHANCE,
         RATING_SYSTEM === "elo" ? PARTIAL_RANDOM_CHANCE : userData.gender,
@@ -138,7 +141,7 @@ const Index = () => {
     try {
       if (ratings.length >= 2) {
         const nextPair = selectNextPairForComparison(
-          ratings,
+          activeRatings,
           RANDOM_PHASE_LIMIT,
           RATING_SYSTEM === "elo" ? RATING_DIFF_THRESHOLD : PARTIAL_RANDOM_CHANCE,
           RATING_SYSTEM === "elo" ? PARTIAL_RANDOM_CHANCE : userData.gender,
@@ -186,6 +189,7 @@ const Index = () => {
             losses_overall: updatedWinner.losses_overall,
             losses_male: updatedWinner.losses_male,
             losses_female: updatedWinner.losses_female,
+            active: updatedWinner.active
           })
           .eq('id', winner.id);
 
@@ -212,6 +216,7 @@ const Index = () => {
             losses_overall: updatedLoser.losses_overall,
             losses_male: updatedLoser.losses_male,
             losses_female: updatedLoser.losses_female,
+            active: updatedLoser.active
           })
           .eq('id', loser.id);
 

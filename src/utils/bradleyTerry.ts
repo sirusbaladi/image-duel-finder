@@ -1,175 +1,158 @@
 // bradleyTerry.ts
-import * as math from 'mathjs';
+import { Tables } from "../integrations/supabase/types";
 
-export interface BradleyTerryResult {
-  rankings: { id: string; pi: number }[];
-  topProbabilities: Record<string, number>;
-  exactRankProbabilities: Record<string, number>;
+export interface BradleyTerryResult { 
+  rankings: { imageId: string; score: number; rank: number }[];
+  top5Probabilities: { [imageId: string]: number };
+  exactRankProbabilities: { [imageId: string]: number };
 }
 
-interface Comparison {
-  image_a_id: string;
-  image_b_id: string;
-  winner_id: string;
-}
-
-// Custom Cholesky decomposition using mathjs
-function choleskyDecomposition(A: math.Matrix): math.Matrix {
-  const n = A.size()[0];
-  const L = math.zeros(n, n) as math.Matrix;
-
-  for (let i = 0; i < n; i++) {
-    for (let k = 0; k <= i; k++) {
-      if (i === k) {
-        // Diagonal element
-        const rowSlice = math.subset(L, math.index(i, math.range(0, k))) as math.Matrix;
-        const sum = math.sum(math.dotMultiply(rowSlice, rowSlice));
-        const diag = math.sqrt(math.subtract(A.get([i, i]), sum) as number);
-        L.set([i, i], diag);
-      } else {
-        // Off-diagonal element
-        const sum = math.sum(
-          math.range(0, k).map(j => L.get([i, j]) * L.get([k, j]))
-        );
-        const a_ik = A.get([i, k]) as number;
-        const l_kk = L.get([k, k]) as number;
-        const value = (a_ik - (sum as number)) / l_kk;
-        L.set([i, k], value);
-      }
-    }
+export function computeBradleyTerry(
+  comparisons: Tables<"image_comparisons">[],
+  category: "overall" | "male" | "female" = "overall",
+  numBootstrapSamples: number = 1000
+): BradleyTerryResult {
+  // Filter comparisons based on category
+  let filteredComparisons = comparisons;
+  if (category === "male") {
+    filteredComparisons = comparisons.filter((c) => c.user_gender === "Man");
+  } else if (category === "female") {
+    filteredComparisons = comparisons.filter((c) => c.user_gender === "Woman");
   }
-  return L;
-}
 
-// Estimate Bradley-Terry parameters
-function estimateBradleyTerryParams(comparisons: Comparison[]): {
-  rankings: { id: string; pi: number }[];
-  covariance: number[][];
-} {
+  // Extract unique image IDs from comparisons
   const imageIds = Array.from(
-    new Set(comparisons.flatMap(c => [c.image_a_id, c.image_b_id]))
+    new Set(filteredComparisons.flatMap((c) => [c.image_a_id, c.image_b_id]))
   );
-  const n = imageIds.length;
-  if (n < 2) return { rankings: imageIds.map(id => ({ id, pi: 1 })), covariance: [[0]] };
 
-  const idToIndex = new Map(imageIds.map((id, idx) => [id, idx]));
-  const X: number[][] = [];
-  const y: number[] = [];
+  // Build win matrix: winMatrix[winner][loser] = number of times winner beats loser
+  const winMatrix: { [winner: string]: { [loser: string]: number } } = {};
+  for (const comp of filteredComparisons) {
+    const { image_a_id, image_b_id, winner_id } = comp;
+    const loser_id = winner_id === image_a_id ? image_b_id : image_a_id;
+    if (!winMatrix[winner_id]) winMatrix[winner_id] = {};
+    winMatrix[winner_id][loser_id] =
+      (winMatrix[winner_id][loser_id] || 0) + 1;
+  }
 
-  comparisons.forEach(comp => {
-    const i = idToIndex.get(comp.image_a_id)!;
-    const j = idToIndex.get(comp.image_b_id)!;
-    const row = new Array(n).fill(0);
-    if (comp.winner_id === comp.image_a_id) {
-      row[i] = 1;
-      row[j] = -1;
-      y.push(1);
-    } else {
-      row[i] = -1;
-      row[j] = 1;
-      y.push(1);
+  // Estimate original Bradley-Terry scores
+  const originalScores = estimateScores(winMatrix, imageIds);
+  const originalRankings = imageIds
+    .slice()
+    .sort((a, b) => originalScores[b] - originalScores[a]);
+
+  // Bootstrap resampling
+  const numComparisons = filteredComparisons.length;
+  const top5Counts: { [id: string]: number } = {};
+  const rankCounts: { [id: string]: { [rank: number]: number } } = {};
+
+  // Initialize counts
+  imageIds.forEach((id) => {
+    top5Counts[id] = 0;
+    rankCounts[id] = {};
+    for (let r = 1; r <= imageIds.length; r++) {
+      rankCounts[id][r] = 0;
     }
-    X.push(row);
   });
 
-  const X_reduced = X.map(row => row.slice(0, -1));
-  const n_params = n - 1;
-  let beta = new Array(n_params).fill(0);
-  const maxIterations = 100;
-  const tolerance = 1e-6;
-
-  for (let iter = 0; iter < maxIterations; iter++) {
-    const mu = X_reduced.map(row => {
-      const logit = math.dot(row, beta);
-      return 1 / (1 + Math.exp(-logit));
+  // Perform bootstrap iterations
+  for (let b = 0; b < numBootstrapSamples; b++) {
+    // Resample comparisons with replacement
+    const resampledComparisons = Array.from(
+      { length: numComparisons },
+      () => filteredComparisons[Math.floor(Math.random() * numComparisons)]
+    );
+    const resampledWinMatrix: {
+      [winner: string]: { [loser: string]: number };
+    } = {};
+    for (const comp of resampledComparisons) {
+      const { image_a_id, image_b_id, winner_id } = comp;
+      const loser_id = winner_id === image_a_id ? image_b_id : image_a_id;
+      if (!resampledWinMatrix[winner_id]) resampledWinMatrix[winner_id] = {};
+      resampledWinMatrix[winner_id][loser_id] =
+        (resampledWinMatrix[winner_id][loser_id] || 0) + 1;
+    }
+    const scores = estimateScores(resampledWinMatrix, imageIds);
+    const rankings = imageIds.slice().sort((a, b) => scores[b] - scores[a]);
+    const top5 = rankings.slice(0, 5);
+    top5.forEach((id) => top5Counts[id]++);
+    rankings.forEach((id, index) => {
+      const rank = index + 1;
+      rankCounts[id][rank]++;
     });
-    const W = math.diag(mu.map(p => p * (1 - p))) as math.Matrix;
-    const XTWX = math.multiply(math.transpose(X_reduced), math.multiply(W, X_reduced)) as math.Matrix;
-    const reg = math.multiply(1e-6, math.identity(n_params)) as math.Matrix;
-    const XTWX_reg = math.add(XTWX, reg) as math.Matrix;
-    const XTWz = math.multiply(
-        math.transpose(X_reduced),
-        math.matrix(mu.map((m, i) => y[i] - m))
-      ) as math.Matrix;
-    const delta = math.lusolve(XTWX_reg, XTWz) as math.Matrix;
-    const betaNew = math.add(beta, delta.toArray()) as number[];
-    const change = math.norm(math.subtract(betaNew, beta), 2) as number;
-    beta = betaNew;
-    if (change < tolerance) break;
   }
 
-  beta.push(0); // Reference item
+  // Calculate probabilities
+  const top5Probabilities = Object.fromEntries(
+    Object.entries(top5Counts).map(([id, count]) => [
+      id,
+      count / numBootstrapSamples,
+    ])
+  );
 
-  const rankings = imageIds.map((id, idx) => ({
-    id,
-    pi: Math.exp(beta[idx]),
+  const exactRankProbabilities = Object.fromEntries(
+    imageIds.map((id) => {
+      const originalRank = originalRankings.indexOf(id) + 1;
+      const count = rankCounts[id][originalRank] || 0;
+      return [id, count / numBootstrapSamples];
+    })
+  );
+
+  // Prepare rankings with normalized scores
+  const rankings = originalRankings.map((imageId, index) => ({
+    imageId,
+    score: originalScores[imageId],
+    rank: index + 1,
   }));
 
-  const mu = X.map(row => {
-    const logit = math.dot(row, beta);
-    return 1 / (1 + Math.exp(-logit));
-  });
-  const W = math.diag(mu.map(p => p * (1 - p))) as math.Matrix;
-  const hessian = math.multiply(math.transpose(X), math.multiply(W, X)) as math.Matrix;
-  const hessian_reg = math.add(hessian, math.multiply(1e-6, math.identity(n))) as math.Matrix;
-  const covarianceMatrix = math.inv(hessian_reg) as math.Matrix;
-  const covariance = covarianceMatrix.toArray() as number[][];
-
-  return { rankings: rankings.sort((a, b) => b.pi - a.pi), covariance };
+  return { rankings, top5Probabilities, exactRankProbabilities };
 }
 
-// Monte Carlo simulation for rank probabilities
-function computeRankProbabilities(
-  rankings: { id: string; pi: number }[],
-  covariance: number[][],
-  numSamples: number = 10000
-): {
-  topProbabilities: Record<string, number>;
-  exactRankProbabilities: Record<string, number>;
-} {
-  const imageIds = rankings.map(r => r.id);
-  const logPi = rankings.map(r => Math.log(r.pi));
-  const rankCounts: Record<string, number[]> = {};
-  imageIds.forEach(id => (rankCounts[id] = new Array(imageIds.length).fill(0)));
-  const rankMap = new Map(rankings.map((r, idx) => [r.id, idx]));
+function estimateScores(
+  winMatrix: { [winner: string]: { [loser: string]: number } },
+  imageIds: string[],
+  maxIterations = 1000,
+  tolerance = 1e-6
+): { [id: string]: number } {
+  let scores: { [id: string]: number } = {};
+  imageIds.forEach((id) => (scores[id] = 1));
 
-  const covMatrix = math.matrix(covariance);
-  const L = choleskyDecomposition(covMatrix);
-
-  for (let i = 0; i < numSamples; i++) {
-    const z = math.random([covariance.length]).map(() =>
-      Math.sqrt(-2 * Math.log(Math.random())) * Math.cos(2 * Math.PI * Math.random())
-    );
-    const sampledLogPi = math.add(logPi, math.multiply(L, z).toArray()) as number[];
-    const sampledPi = sampledLogPi.map(v => Math.exp(v));
-
-    const sorted = imageIds
-      .map((id, idx) => ({ id, pi: sampledPi[idx] }))
-      .sort((a, b) => b.pi - a.pi);
-    sorted.forEach((item, rank) => rankCounts[item.id][rank]++);
+  // MM algorithm iteration
+  for (let iter = 0; iter < maxIterations; iter++) {
+    const newScores: { [id: string]: number } = {};
+    let maxDiff = 0;
+    imageIds.forEach((i) => {
+      let numerator = 0;
+      let denominator = 0;
+      const opponents = new Set([
+        ...(winMatrix[i] ? Object.keys(winMatrix[i]) : []),
+        ...Object.keys(winMatrix).filter((j) => winMatrix[j][i]),
+      ]);
+      opponents.forEach((j) => {
+        const w_ij = winMatrix[i]?.[j] || 0;
+        const w_ji = winMatrix[j]?.[i] || 0;
+        const n_ij = w_ij + w_ji;
+        if (n_ij > 0) {
+          numerator += w_ij;
+          denominator += n_ij / (scores[i] + scores[j]);
+        }
+      });
+      if (denominator > 0) {
+        newScores[i] = numerator / denominator;
+      } else {
+        newScores[i] = scores[i]; // No comparisons, keep initial score
+      }
+      const diff = Math.abs(newScores[i] - scores[i]);
+      if (diff > maxDiff) maxDiff = diff;
+    });
+    scores = newScores;
+    if (maxDiff < tolerance) break;
   }
 
-  const topProbabilities: Record<string, number> = {};
-  const exactRankProbabilities: Record<string, number> = {};
+  // Normalize scores to sum to number of images
+  const total = Object.values(scores).reduce((sum, val) => sum + val, 0);
+  const scale = imageIds.length / total;
+  Object.keys(scores).forEach((id) => (scores[id] *= scale));
 
-  imageIds.forEach(id => {
-    topProbabilities[id] = rankCounts[id].slice(0, 5).reduce((sum, c) => sum + c, 0) / numSamples;
-    const currentRank = rankMap.get(id)!;
-    exactRankProbabilities[id] = rankCounts[id][currentRank] / numSamples;
-  });
-
-  return { topProbabilities, exactRankProbabilities };
-}
-
-export function computeBradleyTerryResults(
-  comparisons: Comparison[],
-  numSamples: number = 10000
-): BradleyTerryResult {
-  const { rankings, covariance } = estimateBradleyTerryParams(comparisons);
-  const { topProbabilities, exactRankProbabilities } = computeRankProbabilities(
-    rankings,
-    covariance,
-    numSamples
-  );
-  return { rankings, topProbabilities, exactRankProbabilities };
+  return scores;
 }

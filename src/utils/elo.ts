@@ -2,6 +2,7 @@
 export interface ImageRating {
   id: string;
   url: string;
+  active: boolean;
   rating_overall: number;
   rating_male: number;
   rating_female: number;

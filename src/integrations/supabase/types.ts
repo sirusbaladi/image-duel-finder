@@ -87,6 +87,7 @@ export type Database = {
           wins_female: number
           wins_male: number
           wins_overall: number
+          active: boolean
         }
         Insert: {
           comparisons_female?: number
@@ -110,6 +111,7 @@ export type Database = {
           wins_female?: number
           wins_male?: number
           wins_overall?: number
+          active: boolean
         }
         Update: {
           comparisons_female?: number
@@ -133,6 +135,7 @@ export type Database = {
           wins_female?: number
           wins_male?: number
           wins_overall?: number
+          active: boolean
         }
         Relationships: []
       }
